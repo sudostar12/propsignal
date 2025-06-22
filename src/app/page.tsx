@@ -33,7 +33,7 @@ export default function Home() {
       console.error('Error loading suburb suggestions:', error)
       setSuburbOptions([])
     } else if (data) {
-      const uniqueSuburbs = [...new Set(data.map((row: { suburb: string }) => row.suburb))]
+      const uniqueSuburbs = Array.from(new Set(data.map((row: { suburb: string }) => row.suburb)));
       setSuburbOptions(uniqueSuburbs)
     }
   }
