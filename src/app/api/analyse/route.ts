@@ -11,7 +11,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 export async function POST(req: NextRequest) {
   try {
     const { suburb, state } = await req.json();
-    console.log('Received suburb/state:', suburb, state);
+    console.log('[DEBUG] Raw input:', { suburb, state });
 
     if (!suburb || !state) {
       return NextResponse.json({ error: 'Suburb and state are required.' }, { status: 400 });
@@ -19,25 +19,34 @@ export async function POST(req: NextRequest) {
 
     const suburbName = suburb.trim().toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
     const stateName = state.trim().toLowerCase().replace(/^./, (c: string) => c.toUpperCase());
-    console.log('Normalized suburb/state:', suburbName, stateName);
 
-    // 1. Match suburb to LGA
+    console.log('[DEBUG] Normalized input:', { suburbName, stateName });
+
+    // Log sample data from Supabase for inspection
+    const debugSample = await supabase
+      .from('lga-to-suburbs')
+      .select('suburb, state')
+      .ilike('suburb', `%${suburbName}%`)
+      .limit(5);
+    console.log('[DEBUG] Sample from lga-to-suburbs:', debugSample.data);
+
+    // Match suburb and state in DB
     const { data: suburbEntry, error: suburbError } = await supabase
       .from('lga-to-suburbs')
       .select('*')
       .ilike('suburb', suburbName)
-      .eq('state', stateName)
-      .single();
+      .ilike('state', stateName)
+      .maybeSingle();
 
-    if (suburbError || !suburbEntry) {
-      console.error('Suburb not found or Supabase error:', suburbError);
+    if (!suburbEntry) {
+      console.warn('[WARN] Suburb not found:', { suburbName, stateName });
       return NextResponse.json({ error: 'Suburb not found in database.' }, { status: 404 });
     }
 
     const lga = suburbEntry.lga;
-    console.log('Found LGA:', lga);
+    console.log('[DEBUG] LGA found:', lga);
 
-    // 2. Fetch all related data
+    // Fetch all related data
     const [crime, prices, income, age, population, projects, rentals, schools] = await Promise.all([
       supabase.from('crime_stats').select('*').eq('suburb', suburbName),
       supabase.from('house_prices').select('*').eq('suburb', suburbName),
@@ -63,9 +72,8 @@ export async function POST(req: NextRequest) {
       schools: schools?.data ?? [],
     };
 
-    console.log('Combined data ready. Calling OpenAI...');
+    console.log('[DEBUG] Combined data ready, calling OpenAI...');
 
-    // 3. Ask GPT for insights
     const prompt = `
 You are a real estate investment analyst. Provide an investment overview and commentary for the following suburb in ${stateName}:
 
@@ -88,19 +96,16 @@ Output should include:
       temperature: 0.7,
     });
 
-    const aiMessage = aiResponse.choices[0]?.message?.content;
-    console.log('OpenAI returned response:', aiMessage?.slice(0, 100), '...');
+    const aiMessage = aiResponse.choices[0]?.message?.content ?? '';
+    console.log('[DEBUG] OpenAI response (first 100 chars):', aiMessage.slice(0, 100));
 
     return NextResponse.json({ message: aiMessage, rawData: combinedData });
 
   } catch (err: unknown) {
-    console.error('Unhandled error in /api/analyse POST:');
+    console.error('[ERROR] API crashed:', err);
     if (err instanceof Error) {
-      console.error(err.message);
       return NextResponse.json({ error: err.message }, { status: 500 });
-    } else {
-      console.error(err);
-      return NextResponse.json({ error: 'Unexpected error' }, { status: 500 });
     }
+    return NextResponse.json({ error: 'Unexpected error' }, { status: 500 });
   }
 }
