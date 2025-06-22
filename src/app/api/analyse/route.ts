@@ -18,7 +18,18 @@ export async function POST(req: NextRequest) {
     }
 
     const suburbName = suburb.trim().toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
-    const stateName = state.trim().toLowerCase().replace(/^./, (c: string) => c.toUpperCase());
+    const STATE_MAP: Record<string, string> = {
+  VIC: 'Vic',
+  NSW: 'Nsw',
+  QLD: 'Qld',
+  SA: 'Sa',
+  WA: 'Wa',
+  TAS: 'Tas',
+  ACT: 'Act',
+  NT: 'Nt',
+};
+
+const stateName = STATE_MAP[state.trim().toUpperCase()] ?? state.trim();
 
     console.log('[DEBUG] Normalized input:', { suburbName, stateName });
 
@@ -35,7 +46,7 @@ export async function POST(req: NextRequest) {
       .from('lga-to-suburbs')
       .select('*')
       .ilike('suburb', suburbName)
-      .ilike('state', stateName)
+      .eq('state', stateName)
       .maybeSingle();
 
     if (!suburbEntry) {
