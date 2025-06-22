@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG] Sample from lga-to-suburbs:', debugSample.data);
 
     // Match suburb and state in DB
-    const { data: suburbEntry, error: suburbError } = await supabase
+    const { data: suburbEntry } = await supabase
       .from('lga-to-suburbs')
       .select('*')
       .ilike('suburb', suburbName)
