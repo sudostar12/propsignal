@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     const suburbName = suburb.trim().toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
-    const stateName = state.trim().toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
+    const stateName = state.trim().toLowerCase().replace(/^./, (c: string) => c.toUpperCase());
     console.log('Normalized suburb/state:', suburbName, stateName);
 
     // 1. Match suburb to LGA
