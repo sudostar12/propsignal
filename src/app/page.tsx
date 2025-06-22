@@ -44,11 +44,11 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!state || !suburb) {
-      setError('Please select a state and enter a suburb.')
+    if (!suburb) {
+      setError('Please enter a suburb.')
       return
     }
-
+    
     setLoading(true)
     setError(null)
     setAiInsight(null)
@@ -57,7 +57,7 @@ export default function Home() {
       const res = await fetch('/api/analyse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ suburb, state }),
+        body: JSON.stringify({ suburb }),
       })
 
       const result = await res.json()
