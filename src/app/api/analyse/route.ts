@@ -32,14 +32,13 @@ export async function POST(req: NextRequest) {
 
     // 2. Fetch all related data
     const [crime, prices, insights, income, age, population, projects, rentals, schools] = await Promise.all([
-      supabase.from('crime_stats').select('*').eq('lga', lga),
+      supabase.from('crime_stats').select('*').eq('suburb', suburbName),
       supabase.from('house_prices').select('*').eq('suburb', suburbName),
-      supabase.from('insights').select('*').eq('suburb', suburbName),
-      supabase.from('median_income').select('*').eq('suburb', suburbName),
-      supabase.from('median_age').select('*').eq('suburb', suburbName),
-      supabase.from('population').select('*').eq('suburb', suburbName),
+      supabase.from('median_income').select('*').eq('lga', lga),
+      supabase.from('median_age').select('*').eq('lga', lga),
+      supabase.from('population').select('*').eq('lga', lga),
       supabase.from('projects').select('*').eq('lga', lga),
-      supabase.from('rentals').select('*').eq('suburb', suburbName),
+      supabase.from('rentals').select('*').eq('lga', lga),
       supabase.from('schools').select('*').eq('suburb', suburbName),
     ]);
 
@@ -47,15 +46,14 @@ export async function POST(req: NextRequest) {
       suburb: suburbName,
       state: stateName,
       lga,
-      crime: crime.data ?? [],
-      house_prices: prices.data ?? [],
-      insights: insights.data ?? [],
-      median_income: income.data ?? [],
-      median_age: age.data ?? [],
+      crime: offence_count.data ?? [],
+      house_prices: median_price.data ?? [],
+      median_income: median_income.data ?? [],
+      median_age: median_age.data ?? [],
       population: population.data ?? [],
-      projects: projects.data ?? [],
-      rentals: rentals.data ?? [],
-      schools: schools.data ?? [],
+      projects: description.data ?? [],
+      rentals: median_rent.data ?? [],
+      schools: school_name.data ?? [],
     };
 
     // 3. Ask GPT for insights
