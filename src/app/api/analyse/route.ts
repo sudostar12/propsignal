@@ -33,14 +33,15 @@ export async function POST(req: NextRequest) {
 
     console.log('[DEBUG] Normalized input:', { suburbName, stateName });
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('lga-to-suburbs')
       .select('*')
       .ilike('suburb', suburbName)
       .eq('state', stateName)
       .limit(5);
 
-    console.log('[DEBUG] Supabase suburb query result:', data);
+      console.log('[DEBUG] Query Input:', { suburbName, stateName });
+      console.log('[DEBUG] Supabase response:', { data, error });
 
     if (!data || data.length === 0) {
       console.warn('[WARN] Suburb not found in database:', { suburbName, stateName });
