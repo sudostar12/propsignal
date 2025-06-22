@@ -14,21 +14,33 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const loadSuburbs = async () => {
-      if (!state) {
-        setSuburbOptions([])
-        return
-      }
-      const { data } = await supabase
-        .from('lga-to-suburbs')
-        .select('suburb')
-        .eq('state', state)
-        .order('suburb')
-      if (data) setSuburbOptions(data.map((s: { name: string }) => s.name))
+ useEffect(() => {
+  const loadMatchingSuburbs = async () => {
+    if (suburb.length < 3 || !state) {
+      setSuburbOptions([])
+      return
     }
-    loadSuburbs()
-  }, [state])
+
+    const { data, error } = await supabase
+      .from('lga-to-suburbs')
+      .select('suburb')
+      .ilike('suburb', `${suburb}%`)
+      .ilike('state', state)
+      .order('suburb')
+      .limit(10)
+
+    if (error) {
+      console.error('Error loading suburb suggestions:', error)
+      setSuburbOptions([])
+    } else if (data) {
+      const uniqueSuburbs = [...new Set(data.map((row: { suburb: string }) => row.suburb))]
+      setSuburbOptions(uniqueSuburbs)
+    }
+  }
+
+  loadMatchingSuburbs()
+}, [suburb, state])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
