@@ -37,6 +37,19 @@ export default function Home() {
 
       const ai = await res.json()
       setAiInsight(ai.result || 'No insight returned')
+
+      const scoreMatch = ai.result.match(/Score:\s*(\d{1,2})\s*\/\s*10/i)
+      const recommendationMatch = ai.result.match(/Recommendation:\s*(.*)/i)
+
+      await supabase.from('insights').insert([
+        {
+          suburb_name: data.name,
+          suburb_data: data,
+          ai_response: ai.result,
+          score: scoreMatch ? parseInt(scoreMatch[1]) : null,
+          recommendation: recommendationMatch ? recommendationMatch[1].trim() : null,
+        },
+      ])
     } catch (err) {
       console.error('AI error:', err)
       setError('Failed to analyse suburb.')
@@ -47,7 +60,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white flex flex-col items-center justify-start px-4 py-20 text-center">
-      {/* Hero Section */}
       <h1 className="text-4xl md:text-5xl font-bold text-gray-800 leading-tight mb-4 max-w-3xl">
         Smarter Property Decisions, Backed by AI
       </h1>
@@ -55,7 +67,6 @@ export default function Home() {
         Analyse any suburb in Australia for capital growth, rental yield, and investment potential — instantly.
       </p>
 
-      {/* Features */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl mb-16">
         <div className="p-6 bg-gray-50 border rounded-lg shadow-sm">
           <h3 className="text-xl font-semibold mb-2 text-gray-800">Backed by Real Data</h3>
@@ -71,7 +82,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Analysis Form */}
       <form onSubmit={handleSubmit} className="mb-6 w-full max-w-md space-y-2">
         <input
           type="text"
@@ -91,7 +101,6 @@ export default function Home() {
       {loading && <p className="text-gray-600 mt-2">Loading...</p>}
       {error && <p className="text-red-500 mt-2">{error}</p>}
 
-      {/* Output */}
       {aiInsight && (
         <div className="w-full max-w-md bg-white p-4 mt-4 rounded shadow text-left">
           <h2 className="text-lg font-semibold mb-2 text-gray-800">AI Insight:</h2>
@@ -99,7 +108,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Footer */}
       <p className="text-xs text-gray-400 mt-20">
         Built with ❤️ for Australian buyers and investors · 2025 © PropSignal
       </p>
