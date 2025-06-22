@@ -51,5 +51,17 @@ export async function POST(req: NextRequest) {
       }, { status: 404 });
     }
 
-    const suburbEntry = data[0];
-    const lga = suburbEntry.lga
+const suburbEntry = data[0];
+const lga = suburbEntry.lga;
+
+// ...rest of the code
+
+  } catch (err: unknown) {
+    console.error('[ERROR] API crashed:', err);
+    if (err instanceof Error) {
+      return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+    return NextResponse.json({ error: 'Unexpected error' }, { status: 500 });
+  }
+}
+
