@@ -19,12 +19,12 @@ export default function Home() {
         setSuburbOptions([])
         return
       }
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('suburbs')
         .select('name')
         .eq('state', state)
         .order('name')
-      if (data) setSuburbOptions(data.map((s: any) => s.name))
+      if (data) setSuburbOptions(data.map((s: { name: string }) => s.name))
     }
     loadSuburbs()
   }, [state])
