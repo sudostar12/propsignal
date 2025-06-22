@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const { data: suburbEntry, error: suburbError } = await supabase
       .from('lga-to-suburbs')
       .select('*')
-      .eq('suburb', suburbName)
+      .ilike('suburb', suburbName)
       .eq('state', stateName)
       .single();
 
