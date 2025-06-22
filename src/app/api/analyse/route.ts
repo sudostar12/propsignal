@@ -85,8 +85,12 @@ Output should include:
 
     return NextResponse.json({ message: aiMessage, rawData: combinedData });
 
-  } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
+  } catch (err: unknown) {
+  if (err instanceof Error) {
+    console.error(err.message);
+  } else {
+    console.error('Unexpected error', err);
   }
+  return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
+}
 }
