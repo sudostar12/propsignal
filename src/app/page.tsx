@@ -21,10 +21,10 @@ export default function Home() {
         return
       }
       const { data } = await supabase
-        .from('suburbs')
-        .select('name')
+        .from('lga-to-suburbs')
+        .select('suburb')
         .eq('state', state)
-        .order('name')
+        .order('suburb')
       if (data) setSuburbOptions(data.map((s: { name: string }) => s.name))
     }
     loadSuburbs()
