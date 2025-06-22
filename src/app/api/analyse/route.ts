@@ -13,8 +13,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Suburb and state are required.' }, { status: 400 });
     }
 
-    const suburbName = suburb.trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-    const stateName = state.trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    const suburbName = suburb.trim().toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
+    const stateName = state.trim().toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
 
     // 1. Match suburb to LGA
     const { data: suburbEntry, error: suburbError } = await supabase
