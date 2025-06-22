@@ -47,8 +47,10 @@ const stateName = STATE_MAP[state.trim().toUpperCase()] ?? state.trim();
       .select('*')
       .ilike('suburb', suburbName)
       .eq('state', stateName)
-      .maybeSingle();
+      .limit(1);
 
+    const suburbEntry = data?.[0];
+    
     if (!suburbEntry) {
       console.warn('[WARN] Suburb not found:', { suburbName, stateName });
       return NextResponse.json({ error: 'Suburb not found in database.' }, { status: 404 });
