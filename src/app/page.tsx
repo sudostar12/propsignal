@@ -42,7 +42,7 @@ export default function Home() {
     setAiInsight(null)
 
     try {
-      const res = await fetch('/api/route', {
+      const res = await fetch('/api/analyse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ suburb, state }),
