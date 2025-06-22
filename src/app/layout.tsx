@@ -7,7 +7,7 @@ export const metadata = {
   openGraph: {
     title: 'PropSignal',
     description: 'Get instant AI insights for any suburb in Australia.',
-    url: 'https://propsignal.vercel.app',
+    url: 'https://propsignal-lgndhluzf-propsignal-projects.vercel.app',
     siteName: 'PropSignal',
   },
 }
