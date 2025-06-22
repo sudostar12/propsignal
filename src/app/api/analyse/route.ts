@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const lga = suburbEntry.lga;
 
     // 2. Fetch all related data
-    const [crime, prices, insights, income, age, population, projects, rentals, schools] = await Promise.all([
+    const [crime, prices, income, age, population, projects, rentals, schools] = await Promise.all([
       supabase.from('crime_stats').select('*').eq('suburb', suburbName),
       supabase.from('house_prices').select('*').eq('suburb', suburbName),
       supabase.from('median_income').select('*').eq('lga', lga),
@@ -46,14 +46,14 @@ export async function POST(req: NextRequest) {
       suburb: suburbName,
       state: stateName,
       lga,
-      crime: offence_count.data ?? [],
-      house_prices: median_price.data ?? [],
-      median_income: median_income.data ?? [],
-      median_age: median_age.data ?? [],
-      population: population.data ?? [],
-      projects: description.data ?? [],
-      rentals: median_rent.data ?? [],
-      schools: school_name.data ?? [],
+      crime: crime?.data ?? [],
+      house_prices: prices?.data ?? [],
+      median_income: income?.data ?? [],
+      median_age: age?.data ?? [],
+      population: population?.data ?? [],
+      projects: projects?.data ?? [],
+      rentals: rentals?.data ?? [],
+      schools: schools?.data ?? [],
     };
 
     // 3. Ask GPT for insights
