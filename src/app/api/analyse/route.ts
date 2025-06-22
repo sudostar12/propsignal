@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Suburb is required.' }, { status: 400 });
     }
 
-    const suburbName = suburb.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+    const suburbName = suburb.trim().toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
     console.log('[DEBUG] Normalized suburb:', suburbName);
 
     const { data, error } = await supabase
