@@ -3,7 +3,10 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 
+const states = ['VIC', 'NSW', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
+
 export default function Home() {
+  const [state, setState] = useState('')
   const [suburb, setSuburb] = useState('')
   const [aiInsight, setAiInsight] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -11,6 +14,11 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!state) {
+      setError('Please select a state.')
+      return
+    }
+
     setLoading(true)
     setError(null)
     setAiInsight(null)
@@ -20,11 +28,12 @@ export default function Home() {
         .from('suburbs')
         .select('*')
         .ilike('name', `%${suburb}%`)
+        .eq('state', state)
         .limit(1)
         .single()
 
       if (!data) {
-        setError('Suburb not found.')
+        setError('Suburb not found in selected state.')
         setLoading(false)
         return
       }
@@ -83,6 +92,16 @@ export default function Home() {
       </div>
 
       <form onSubmit={handleSubmit} className="mb-6 w-full max-w-md space-y-2">
+        <select
+          value={state}
+          onChange={(e) => setState(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-800"
+        >
+          <option value="">Select a state</option>
+          {states.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
         <input
           type="text"
           placeholder="Enter suburb (e.g. Tarneit)"
