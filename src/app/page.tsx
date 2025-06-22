@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 
 const states = ['VIC', 'NSW', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
@@ -8,9 +8,26 @@ const states = ['VIC', 'NSW', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
 export default function Home() {
   const [state, setState] = useState('')
   const [suburb, setSuburb] = useState('')
+  const [suburbOptions, setSuburbOptions] = useState<string[]>([])
   const [aiInsight, setAiInsight] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadSuburbs = async () => {
+      if (!state) {
+        setSuburbOptions([])
+        return
+      }
+      const { data, error } = await supabase
+        .from('suburbs')
+        .select('name')
+        .eq('state', state)
+        .order('name')
+      if (data) setSuburbOptions(data.map((s: any) => s.name))
+    }
+    loadSuburbs()
+  }, [state])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -102,13 +119,22 @@ export default function Home() {
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
+
         <input
           type="text"
+          list="suburb-list"
           placeholder="Enter suburb (e.g. Tarneit)"
           value={suburb}
           onChange={(e) => setSuburb(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md"
+          disabled={!state}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
         />
+        <datalist id="suburb-list">
+          {suburbOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+
         <button
           type="submit"
           className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
