@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Suburb and state are required.' }, { status: 400 });
     }
 
-    const suburbName = suburb.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+    const suburbName = suburb.trim().toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
 
     const STATE_MAP: Record<string, string> = {
       VIC: 'Vic',
