@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient'
+import { CheckCircle, Sparkles, Search } from 'lucide-react'
 
 const states = ['VIC', 'NSW', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
 
@@ -85,34 +86,37 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center justify-start px-4 py-20 text-center">
-      <h1 className="text-4xl md:text-5xl font-bold text-gray-800 leading-tight mb-4 max-w-3xl">
-        Smarter Property Decisions, Backed by AI
+    <main className="min-h-screen bg-gradient-to-b from-white to-slate-100 flex flex-col items-center justify-start px-4 py-20 text-center">
+      <h1 className="text-5xl font-extrabold text-slate-800 leading-tight mb-4 max-w-3xl">
+        Smarter Property Decisions with <span className="text-blue-600">AI</span>
       </h1>
-      <p className="text-lg text-gray-600 mb-10 max-w-xl">
-        Analyse any suburb in Australia for capital growth, rental yield, and investment potential — instantly.
+      <p className="text-lg text-slate-600 mb-10 max-w-xl">
+        Instantly analyse any Australian suburb for capital growth, rental yield, and investment potential.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl mb-16">
-        <div className="p-6 bg-gray-50 border rounded-lg shadow-sm">
-          <h3 className="text-xl font-semibold mb-2 text-gray-800">Backed by Real Data</h3>
-          <p className="text-sm text-gray-600">Combines local council, ABS, and rental trends to power suburb scoring.</p>
+        <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm text-left">
+          <CheckCircle className="text-blue-600 w-6 h-6 mb-2" />
+          <h3 className="text-lg font-semibold text-slate-800 mb-1">Real Data Sources</h3>
+          <p className="text-sm text-slate-600">Combines local council, ABS, and rental trends to power suburb scoring.</p>
         </div>
-        <div className="p-6 bg-gray-50 border rounded-lg shadow-sm">
-          <h3 className="text-xl font-semibold mb-2 text-gray-800">AI-Powered Insight</h3>
-          <p className="text-sm text-gray-600">OpenAI provides a unique summary, score, and recommendation in seconds.</p>
+        <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm text-left">
+          <Sparkles className="text-blue-600 w-6 h-6 mb-2" />
+          <h3 className="text-lg font-semibold text-slate-800 mb-1">AI-Powered Insight</h3>
+          <p className="text-sm text-slate-600">OpenAI generates unique summaries, scores, and recommendations in seconds.</p>
         </div>
-        <div className="p-6 bg-gray-50 border rounded-lg shadow-sm">
-          <h3 className="text-xl font-semibold mb-2 text-gray-800">Try It Free</h3>
-          <p className="text-sm text-gray-600">No sign-up or cost. Just search a suburb to see how it ranks.</p>
+        <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm text-left">
+          <Search className="text-blue-600 w-6 h-6 mb-2" />
+          <h3 className="text-lg font-semibold text-slate-800 mb-1">No Sign-Up Needed</h3>
+          <p className="text-sm text-slate-600">Try it free — just select a state and search a suburb to get started.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="mb-6 w-full max-w-md space-y-2">
+      <form onSubmit={handleSubmit} className="mb-8 w-full max-w-md space-y-3">
         <select
           value={state}
           onChange={(e) => setState(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-800"
+          className="w-full px-4 py-2 border border-slate-300 rounded-md text-slate-800 focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Select a state</option>
           {states.map((s) => (
@@ -127,7 +131,7 @@ export default function Home() {
           value={suburb}
           onChange={(e) => setSuburb(e.target.value)}
           disabled={!state}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+          className="w-full px-4 py-2 border border-slate-300 rounded-md disabled:bg-slate-100 focus:ring-2 focus:ring-blue-500"
         />
         <datalist id="suburb-list">
           {suburbOptions.map((option) => (
@@ -137,23 +141,23 @@ export default function Home() {
 
         <button
           type="submit"
-          className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium shadow"
         >
           Analyse Suburb
         </button>
       </form>
 
-      {loading && <p className="text-gray-600 mt-2">Loading...</p>}
+      {loading && <p className="text-slate-600 mt-2">Loading...</p>}
       {error && <p className="text-red-500 mt-2">{error}</p>}
 
       {aiInsight && (
-        <div className="w-full max-w-md bg-white p-4 mt-4 rounded shadow text-left">
-          <h2 className="text-lg font-semibold mb-2 text-gray-800">AI Insight:</h2>
-          <p className="text-sm text-gray-800 whitespace-pre-wrap">{aiInsight}</p>
+        <div className="w-full max-w-md bg-white p-6 mt-4 rounded-xl shadow text-left border border-slate-200">
+          <h2 className="text-lg font-semibold mb-2 text-slate-800">AI Insight:</h2>
+          <p className="text-sm text-slate-700 whitespace-pre-wrap">{aiInsight}</p>
         </div>
       )}
 
-      <p className="text-xs text-gray-400 mt-20">
+      <p className="text-xs text-slate-400 mt-20">
         Built with ❤️ for Australian buyers and investors · 2025 © PropSignal
       </p>
     </main>
