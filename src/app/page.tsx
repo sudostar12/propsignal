@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { CheckCircle, Sparkles, Search } from 'lucide-react'
 
-const states = ['VIC', 'NSW', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
+const states = ['Vic', 'NSW', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
 
 export default function Home() {
   const [state, setState] = useState('')

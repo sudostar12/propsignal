@@ -42,7 +42,7 @@ const stateName = STATE_MAP[state.trim().toUpperCase()] ?? state.trim();
     console.log('[DEBUG] Sample from lga-to-suburbs:', debugSample.data);
 
     // Match suburb and state in DB
-    const { data: suburbEntry } = await supabase
+    const { data, error } = await supabase
       .from('lga-to-suburbs')
       .select('*')
       .ilike('suburb', suburbName)
