@@ -32,8 +32,8 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!state) {
-      setError('Please select a state.')
+    if (!state || !suburb) {
+      setError('Please select a state and enter a suburb.')
       return
     }
 
@@ -42,39 +42,30 @@ export default function Home() {
     setAiInsight(null)
 
     try {
-      const { data } = await supabase
-        .from('suburbs')
-        .select('*')
-        .ilike('name', `%${suburb}%`)
-        .eq('state', state)
-        .limit(1)
-        .single()
+      const res = await fetch('/api/route', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ suburb, state }),
+      })
 
-      if (!data) {
-        setError('Suburb not found in selected state.')
+      const result = await res.json()
+
+      if (res.status !== 200) {
+        setError(result.error || 'Something went wrong.')
         setLoading(false)
         return
       }
 
-      const res = await fetch('/api/analyse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ suburbData: data })
-      })
+      setAiInsight(result.message || 'No insight returned')
 
-      const ai = await res.json()
-      setAiInsight(ai.result || 'No insight returned')
-
-      const scoreMatch = ai.result.match(/Score:\s*(\d{1,2})\s*\/\s*10/i)
-      const recommendationMatch = ai.result.match(/Recommendation:\s*(.*)/i)
-
+      // Optional: save AI output to insights table
       await supabase.from('insights').insert([
         {
-          suburb_name: data.name,
-          suburb_data: data,
-          ai_response: ai.result,
-          score: scoreMatch ? parseInt(scoreMatch[1]) : null,
-          recommendation: recommendationMatch ? recommendationMatch[1].trim() : null,
+          suburb_name: suburb,
+          suburb_data: result.rawData,
+          ai_response: result.message,
+          score: null, // Parse from result.message if your prompt includes it
+          recommendation: null, // Same as above
         },
       ])
     } catch (err) {
@@ -127,7 +118,7 @@ export default function Home() {
         <input
           type="text"
           list="suburb-list"
-          placeholder="Enter suburb (e.g. Tarneit)"
+          placeholder="Enter suburb (e.g. Melbourne)"
           value={suburb}
           onChange={(e) => setSuburb(e.target.value)}
           disabled={!state}
