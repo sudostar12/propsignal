@@ -115,9 +115,11 @@ export async function POST(req: NextRequest) {
     const MAX_ITEMS = 15;
     
     // Smart sampling function to get representative data across the full range
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const smartSample = (data: any[], maxItems: number): any[] => {
       if (data.length <= maxItems) return data;
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result: any[] = [];
       const step = Math.floor(data.length / maxItems);
       
