@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG] Normalized suburb:', suburbName);
 
     const { data, error } = await supabase
-      .from('lga-to-suburbs')
+      .from('suburbs')
       .select('*')
       .ilike('suburb', suburbName)
       .limit(5);
