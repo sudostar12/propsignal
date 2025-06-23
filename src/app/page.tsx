@@ -90,19 +90,19 @@ export default function Home() {
         Smarter Property Decisions with <span className="text-blue-600">AI</span>
       </h1>
       <p className="text-lg text-slate-600 mb-10 max-w-xl">
-        Instantly analyse any Australian suburb for capital growth, rental yield, and investment potential.
+        Gain Australian property insights in minutes.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl mb-16">
         <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm text-left">
           <CheckCircle className="text-blue-600 w-6 h-6 mb-2" />
           <h3 className="text-lg font-semibold text-slate-800 mb-1">Real Data Sources</h3>
-          <p className="text-sm text-slate-600">Combines local council, ABS, and rental trends to power suburb scoring.</p>
+          <p className="text-sm text-slate-600">Combines publically available data to provide suburb analysis.</p>
         </div>
         <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm text-left">
           <Sparkles className="text-blue-600 w-6 h-6 mb-2" />
           <h3 className="text-lg font-semibold text-slate-800 mb-1">AI-Powered Insight</h3>
-          <p className="text-sm text-slate-600">OpenAI generates unique summaries, scores, and recommendations in seconds.</p>
+          <p className="text-sm text-slate-600">AI generates unique summaries, scores, and recommendations in seconds.</p>
         </div>
         <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm text-left">
           <Search className="text-blue-600 w-6 h-6 mb-2" />
@@ -115,7 +115,7 @@ export default function Home() {
         <input
           type="text"
           list="suburb-list"
-          placeholder="Enter suburb (e.g. Tarneit)"
+          placeholder="Enter suburb (e.g. Melbourne)"
           value={suburb}
           onChange={(e) => setSuburb(e.target.value)}
           className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"

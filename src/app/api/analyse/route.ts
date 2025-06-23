@@ -8,6 +8,11 @@ const supabase = createClient(
 );
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
+export async function GET() {
+  return NextResponse.json({ ok: true, msg: "API is alive" });
+}
+
+
 export async function POST(req: NextRequest) {
   try {
     const { suburb } = await req.json();
