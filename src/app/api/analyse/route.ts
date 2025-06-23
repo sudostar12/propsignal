@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG] Found match:', { suburbName, lga, stateName });
   
 
-    const tryFetch = async (query: PostgrestFilterBuilder<any, Record<string, unknown>, Record<string, unknown>[]>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tryFetch = async (query: any) => {
       try {
         // Supabase client returns an object with a `data` property on success
         const { data, error } = await query;
