@@ -4,7 +4,7 @@ interface SuburbPromptInput {
   suburb: string
   state: string
   lga: string
-  data: Record<string, any>
+  data: Record<string, unknown>
 }
 
 export function buildSuburbPrompt({ suburb, state, lga, data }: SuburbPromptInput): string {
