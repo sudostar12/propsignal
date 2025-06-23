@@ -4,51 +4,48 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { CheckCircle, Sparkles, Search } from 'lucide-react'
 
-const states = ['Vic', 'NSW', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
-
 export default function Home() {
-  const [state, setState] = useState('')
   const [suburb, setSuburb] = useState('')
   const [suburbOptions, setSuburbOptions] = useState<string[]>([])
   const [aiInsight, setAiInsight] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
- useEffect(() => {
-  const loadMatchingSuburbs = async () => {
-    if (suburb.length < 3 || !state) {
+  // Load suburb suggestions
+  useEffect(() => {
+    if (suburb.length < 3) {
       setSuburbOptions([])
       return
     }
 
-    const { data, error } = await supabase
-      .from('lga-to-suburbs')
-      .select('suburb')
-      .ilike('suburb', `${suburb}%`)
-      .ilike('state', state)
-      .order('suburb')
-      .limit(10)
+    const fetchSuggestions = async () => {
+      const { data, error } = await supabase
+        .from('lga-to-suburbs')
+        .select('suburb')
+        .ilike('suburb', `${suburb}%`)
+        .order('suburb')
+        .limit(10)
 
-    if (error) {
-      console.error('Error loading suburb suggestions:', error)
-      setSuburbOptions([])
-    } else if (data) {
-      const uniqueSuburbs = Array.from(new Set(data.map((row: { suburb: string }) => row.suburb)));
-      setSuburbOptions(uniqueSuburbs)
+      if (error) {
+        console.error('Error loading suburb suggestions:', error)
+        setSuburbOptions([])
+      } else {
+        const unique = Array.from(new Set(data.map((row: { suburb: string }) => row.suburb)))
+        setSuburbOptions(unique)
+      }
     }
-  }
 
-  loadMatchingSuburbs()
-}, [suburb, state])
+    fetchSuggestions()
+  }, [suburb])
 
-
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!suburb) {
       setError('Please enter a suburb.')
       return
     }
-    
+
     setLoading(true)
     setError(null)
     setAiInsight(null)
@@ -70,14 +67,13 @@ export default function Home() {
 
       setAiInsight(result.message || 'No insight returned')
 
-      // Optional: save AI output to insights table
       await supabase.from('insights').insert([
         {
           suburb_name: suburb,
           suburb_data: result.rawData,
           ai_response: result.message,
-          score: null, // Parse from result.message if your prompt includes it
-          recommendation: null, // Same as above
+          score: null,
+          recommendation: null,
         },
       ])
     } catch (err) {
@@ -111,30 +107,18 @@ export default function Home() {
         <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm text-left">
           <Search className="text-blue-600 w-6 h-6 mb-2" />
           <h3 className="text-lg font-semibold text-slate-800 mb-1">No Sign-Up Needed</h3>
-          <p className="text-sm text-slate-600">Try it free — just select a state and search a suburb to get started.</p>
+          <p className="text-sm text-slate-600">Try it free — just enter a suburb and click analyse.</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mb-8 w-full max-w-md space-y-3">
-        <select
-          value={state}
-          onChange={(e) => setState(e.target.value)}
-          className="w-full px-4 py-2 border border-slate-300 rounded-md text-slate-800 focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Select a state</option>
-          {states.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-
         <input
           type="text"
           list="suburb-list"
-          placeholder="Enter suburb (e.g. Melbourne)"
+          placeholder="Enter suburb (e.g. Tarneit)"
           value={suburb}
           onChange={(e) => setSuburb(e.target.value)}
-          disabled={!state}
-          className="w-full px-4 py-2 border border-slate-300 rounded-md disabled:bg-slate-100 focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
         />
         <datalist id="suburb-list">
           {suburbOptions.map((option) => (
