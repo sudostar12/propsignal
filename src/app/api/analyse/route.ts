@@ -49,12 +49,12 @@ export async function POST(req: NextRequest) {
     const [crime, prices, income, age, population, projects, rentals, schools] = await Promise.all([
       supabase.from('crime_stats').select('*').ilike('suburb', suburbName),
       supabase.from('house_prices').select('*').ilike('suburb', suburbName),
-      supabase.from('median_income').select('*').eq('lga', lga),
-      supabase.from('median_age').select('*').eq('lga', lga),
-      supabase.from('population').select('*').eq('lga', lga),
-      supabase.from('projects').select('*').eq('lga', lga),
-      supabase.from('rentals').select('*').eq('lga', lga),
-      supabase.from('schools').select('*').eq('suburb', suburbName),
+      supabase.from('median_income').select('*').ilike('lga', lga),
+      supabase.from('median_age').select('*').ilike('lga', lga),
+      supabase.from('population').select('*').ilike('lga', lga),
+      supabase.from('projects').select('*').ilike('lga', lga),
+      supabase.from('rentals').select('*').ilike('lga', lga),
+      supabase.from('schools').select('*').ilike('suburb', suburbName),
     ]);
 
     console.log('[DEBUG] Crime data rows:', crime?.data?.length);
@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG] Age data rows:', age?.data?.length);
     console.log('[DEBUG] House prices data rows:', prices?.data?.length);
     console.log('[DEBUG] LGA being used for lookups:', lga);
+    console.log('SuburbName:', JSON.stringify(suburbName));
 
 
     const combinedData = {
@@ -99,6 +100,9 @@ Output should include:
 - Any notable risks or development opportunities
 - Overall growth outlook
     `.trim();
+    
+    console.log('[DEBUG] OpenAI prompt:\n', prompt);
+
 
     const aiResponse = await openai.chat.completions.create({
       model: 'gpt-4',
