@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { buildSuburbPrompt } from '@/utils/aiPromptBuilder'
+import { buildSuburbPrompt } from '../../../utils/aiPromptBuilder';
 
 
 const supabase = createClient(
