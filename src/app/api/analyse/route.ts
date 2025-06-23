@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG] Found match:', { suburbName, lga, stateName });
   
 
-    const tryFetch = async (query: PostgrestFilterBuilder<any, any, any[]>) => {
+    const tryFetch = async (query: PostgrestFilterBuilder<any, Record<string, unknown>, Record<string, unknown>[]>) => {
       try {
         // Supabase client returns an object with a `data` property on success
         const { data, error } = await query;
@@ -112,6 +112,23 @@ export async function POST(req: NextRequest) {
 
     console.log('[DEBUG] Combined data ready, calling OpenAI...');
 
+    const MAX_ITEMS = 15;
+    const summarizedData = {
+      suburb: combinedData.suburb,
+      state: combinedData.state,
+      lga: combinedData.lga,
+      crime_stats_sample: combinedData.crime.slice(0, MAX_ITEMS),
+      house_prices_sample: combinedData.house_prices.slice(0, MAX_ITEMS),
+      median_income_sample: combinedData.median_income.slice(0, MAX_ITEMS),
+      median_age_sample: combinedData.median_age.slice(0, MAX_ITEMS),
+      population_sample: combinedData.population.slice(0, MAX_ITEMS),
+      development_projects_sample: combinedData.projects.slice(0, MAX_ITEMS),
+      rental_market_sample: combinedData.rentals.slice(0, MAX_ITEMS),
+      schools_sample: combinedData.schools.slice(0, MAX_ITEMS),
+    };
+
+    console.log('[DEBUG] Summarized data for AI:', JSON.stringify(summarizedData).length, 'chars');
+
     const prompt = `
 You are a real estate investment analyst. Provide an investment overview and commentary for the following suburb in ${stateName}:
 
@@ -119,7 +136,7 @@ Suburb: ${suburbName}
 LGA: ${lga}
 
 Data:
-${JSON.stringify(combinedData, null, 2)}
+${JSON.stringify(summarizedData)}
 
 Output should include:
 - Summary of current investment landscape
@@ -132,7 +149,7 @@ Output should include:
 
 
     const aiResponse = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
     });
