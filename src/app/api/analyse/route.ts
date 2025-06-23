@@ -113,18 +113,45 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG] Combined data ready, calling OpenAI...');
 
     const MAX_ITEMS = 15;
+    
+    // Smart sampling function to get representative data across the full range
+    const smartSample = (data: any[], maxItems: number): any[] => {
+      if (data.length <= maxItems) return data;
+      
+      const result: any[] = [];
+      const step = Math.floor(data.length / maxItems);
+      
+      // Take items from beginning, middle, and end
+      for (let i = 0; i < maxItems; i++) {
+        const index = Math.floor(i * step);
+        if (index < data.length) {
+          result.push(data[index]);
+        }
+      }
+      
+      // Always include the most recent data (last few items)
+      const recentItems = data.slice(-3);
+      recentItems.forEach(item => {
+        if (!result.some(existing => JSON.stringify(existing) === JSON.stringify(item))) {
+          result.push(item);
+        }
+      });
+      
+      return result.slice(0, maxItems);
+    };
+
     const summarizedData = {
       suburb: combinedData.suburb,
       state: combinedData.state,
       lga: combinedData.lga,
-      crime_stats_sample: combinedData.crime.slice(0, MAX_ITEMS),
-      house_prices_sample: combinedData.house_prices.slice(0, MAX_ITEMS),
-      median_income_sample: combinedData.median_income.slice(0, MAX_ITEMS),
-      median_age_sample: combinedData.median_age.slice(0, MAX_ITEMS),
-      population_sample: combinedData.population.slice(0, MAX_ITEMS),
-      development_projects_sample: combinedData.projects.slice(0, MAX_ITEMS),
-      rental_market_sample: combinedData.rentals.slice(0, MAX_ITEMS),
-      schools_sample: combinedData.schools.slice(0, MAX_ITEMS),
+      crime_stats_sample: smartSample(combinedData.crime, MAX_ITEMS),
+      house_prices_sample: smartSample(combinedData.house_prices, MAX_ITEMS),
+      median_income_sample: smartSample(combinedData.median_income, MAX_ITEMS),
+      median_age_sample: smartSample(combinedData.median_age, MAX_ITEMS),
+      population_sample: smartSample(combinedData.population, MAX_ITEMS),
+      development_projects_sample: smartSample(combinedData.projects, MAX_ITEMS),
+      rental_market_sample: smartSample(combinedData.rentals, MAX_ITEMS),
+      schools_sample: smartSample(combinedData.schools, MAX_ITEMS),
     };
 
     console.log('[DEBUG] Summarized data for AI:', JSON.stringify(summarizedData).length, 'chars');
