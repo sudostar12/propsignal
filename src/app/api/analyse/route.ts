@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,26 +46,52 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG] Found match:', { suburbName, lga, stateName });
   
 
-    // Fetch all related data
-    const [crime, prices, income, age, population, projects, rentals, schools] = await Promise.all([
-      supabase.from('crime_stats').select('*').ilike('suburb', suburbName),
-      supabase.from('house_prices').select('*').ilike('suburb', suburbName),
-      supabase.from('median_income').select('*').ilike('lga', lga),
-      supabase.from('median_age').select('*').ilike('lga', lga),
-      supabase.from('population').select('*').ilike('lga', lga),
-      supabase.from('projects').select('*').ilike('lga', lga),
-      supabase.from('rentals').select('*').ilike('lga', lga),
-      supabase.from('schools').select('*').ilike('suburb', suburbName),
+    const tryFetch = async (query: PostgrestFilterBuilder<any, any, any[]>) => {
+      try {
+        // Supabase client returns an object with a `data` property on success
+        const { data, error } = await query;
+        if (error) {
+          // Log the specific error from Supabase but don't crash
+          console.warn('[WARN] Supabase query failed:', error);
+          return [];
+        }
+        return data ?? [];
+      } catch (err) {
+        // Catch network or other unexpected errors during the fetch
+        console.warn('[WARN] Fetch execution failed:', err);
+        return [];
+      }
+    };
+
+    // Fetch all related data safely
+    const [
+      crime,
+      prices,
+      income,
+      age,
+      population,
+      projects,
+      rentals,
+      schools,
+    ] = await Promise.all([
+      tryFetch(supabase.from('crime_stats').select('*').ilike('suburb', `%${suburbName}%`)),
+      tryFetch(supabase.from('house_prices').select('*').ilike('suburb', `%${suburbName}%`)),
+      tryFetch(supabase.from('median_income').select('*').ilike('lga', `%${lga}%`)),
+      tryFetch(supabase.from('median_age').select('*').ilike('lga', `%${lga}%`)),
+      tryFetch(supabase.from('population').select('*').ilike('lga', `%${lga}%`)),
+      tryFetch(supabase.from('projects').select('*').ilike('lga', `%${lga}%`)),
+      tryFetch(supabase.from('rentals').select('*').ilike('lga', `%${lga}%`)),
+      tryFetch(supabase.from('schools').select('*').ilike('suburb', `%${suburbName}%`)),
     ]);
 
-    console.log('[DEBUG] Crime data rows:', crime?.data?.length);
-    console.log('[DEBUG] Rentals data rows:', rentals?.data?.length);
-    console.log('[DEBUG] Projects data rows:', projects?.data?.length);
-    console.log('[DEBUG] Schools data rows:', schools?.data?.length);
-    console.log('[DEBUG] Population data rows:', population?.data?.length);
-    console.log('[DEBUG] Income data rows:', income?.data?.length);
-    console.log('[DEBUG] Age data rows:', age?.data?.length);
-    console.log('[DEBUG] House prices data rows:', prices?.data?.length);
+    console.log('[DEBUG] Crime data rows:', crime.length);
+    console.log('[DEBUG] Rentals data rows:', rentals.length);
+    console.log('[DEBUG] Projects data rows:', projects.length);
+    console.log('[DEBUG] Schools data rows:', schools.length);
+    console.log('[DEBUG] Population data rows:', population.length);
+    console.log('[DEBUG] Income data rows:', income.length);
+    console.log('[DEBUG] Age data rows:', age.length);
+    console.log('[DEBUG] House prices data rows:', prices.length);
     console.log('[DEBUG] LGA being used for lookups:', lga);
     console.log('SuburbName:', JSON.stringify(suburbName));
 
@@ -73,14 +100,14 @@ export async function POST(req: NextRequest) {
       suburb: suburbName,
       state: stateName,
       lga,
-      crime: crime?.data ?? [],
-      house_prices: prices?.data ?? [],
-      median_income: income?.data ?? [],
-      median_age: age?.data ?? [],
-      population: population?.data ?? [],
-      projects: projects?.data ?? [],
-      rentals: rentals?.data ?? [],
-      schools: schools?.data ?? [],
+      crime: crime,
+      house_prices: prices,
+      median_income: income,
+      median_age: age,
+      population: population,
+      projects: projects,
+      rentals: rentals,
+      schools: schools,
     };
 
     console.log('[DEBUG] Combined data ready, calling OpenAI...');
