@@ -43,11 +43,12 @@ export async function POST(req: NextRequest) {
     const stateName = suburbEntry.state;
 
     console.log('[DEBUG] Found match:', { suburbName, lga, stateName });
+  
 
     // Fetch all related data
     const [crime, prices, income, age, population, projects, rentals, schools] = await Promise.all([
-      supabase.from('crime_stats').select('*').eq('suburb', suburbName),
-      supabase.from('house_prices').select('*').eq('suburb', suburbName),
+      supabase.from('crime_stats').select('*').ilike('suburb', suburbName),
+      supabase.from('house_prices').select('*').ilike('suburb', suburbName),
       supabase.from('median_income').select('*').eq('lga', lga),
       supabase.from('median_age').select('*').eq('lga', lga),
       supabase.from('population').select('*').eq('lga', lga),
@@ -55,6 +56,17 @@ export async function POST(req: NextRequest) {
       supabase.from('rentals').select('*').eq('lga', lga),
       supabase.from('schools').select('*').eq('suburb', suburbName),
     ]);
+
+    console.log('[DEBUG] Crime data rows:', crime?.data?.length);
+    console.log('[DEBUG] Rentals data rows:', rentals?.data?.length);
+    console.log('[DEBUG] Projects data rows:', projects?.data?.length);
+    console.log('[DEBUG] Schools data rows:', schools?.data?.length);
+    console.log('[DEBUG] Population data rows:', population?.data?.length);
+    console.log('[DEBUG] Income data rows:', income?.data?.length);
+    console.log('[DEBUG] Age data rows:', age?.data?.length);
+    console.log('[DEBUG] House prices data rows:', prices?.data?.length);
+    console.log('[DEBUG] LGA being used for lookups:', lga);
+
 
     const combinedData = {
       suburb: suburbName,
