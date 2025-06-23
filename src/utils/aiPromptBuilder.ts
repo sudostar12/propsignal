@@ -1,63 +1,58 @@
 // utils/aiPromptBuilder.ts
 
-export function buildSuburbPrompt({
-  suburb,
-  state,
-  lga,
-  data,
-}: {
-  suburb: string;
-  state: string;
-  lga: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any;
-}): string {
+interface SuburbPromptInput {
+  suburb: string
+  state: string
+  lga: string
+  data: Record<string, any>
+}
+
+export function buildSuburbPrompt({ suburb, state, lga, data }: SuburbPromptInput): string {
   return `
-You are an expert real estate investment analyst.
-Create a structured suburb investment report with bullet points and data-driven insights.
-Only use the data provided.
+You are a real estate investment analyst. Provide a structured investment overview for:
 
 Suburb: ${suburb}
 State: ${state}
 LGA: ${lga}
 
----
-
-Data:
+Available Data:
 ${JSON.stringify(data, null, 2)}
 
----
+Your response must be structured with markdown headings and include these sections:
 
-Output format:
+## 💡 Executive Summary
+Start with a 1-2 line TL;DR summarising the investment attractiveness of the suburb.
 
-🏘️ Suburb Investment Snapshot: ${suburb}, ${state}
----------------------------------------------
+## 📈 Capital Growth
+- Median house prices and growth trends (mention % or $ where applicable)
+- Compare to Melbourne/VIC average if data exists
 
-📈 Capital Growth
-- Median House Price: [latest]
-- Historical Growth: [trend or CAGR]
+## 🏡 Rental Market
+- Median rent and rental yield (estimate yield if rent + price data is available)
+- Mention rental trends and demand drivers
+- Use emojis like 🟢🟡🔴 to indicate strength
 
-🏡 Rental Market
-- Median Rent: [latest]
-- Yield Estimate: [if possible]
-- Rental Demand: [comment on growth or stability]
+## 👥 Demographics & Demand Drivers
+- Median age, population growth, cultural diversity
+- Notable demographic patterns compared to metro
 
-👥 Demographics
-- Median Age: [value]
-- Population Growth: [if available]
-- Cultural Diversity: [summarise % or comment]
+## 🎓 Infrastructure & Schools
+- Key schools and infrastructure projects
+- Pressures (e.g., over-enrolment, transport gaps)
 
-🎓 Infrastructure
-- Key Schools: [list or summarise]
-- Pressure on schools or transport: [Yes/No/Comment]
+## ⚠️ Risks & Watchlist
+- Crime trends and any year-on-year changes
+- Any risks (e.g. oversupply, lack of amenities)
+- Add smart triggers to monitor ("If X happens, risk improves")
 
-⚠️ Risks & Watchlist
-- Crime Trend: [e.g. +40% YoY]
-- Infrastructure Gaps: [comment if any]
+## 🧠 Investment Verdict
+Summarise:
+- Capital Growth: 🟢🟡🔴
+- Yield Potential: 🟢🟡🔴
+- Risk Level: 🟢🟡🔴
+- Best suited for: Long-term investor / yield-focused buyer / etc
+- Final rating (optional): ⭐⭐⭐⭐ out of 5
 
-✅ Investment Verdict
-- Score: [1–10 if known]
-- Risk Level: [Low / Moderate / High]
-- Summary: [1-line call to action for buyers]
-`.trim();
+Keep the language clear, informative, and analytical. Avoid fluff.
+`.trim()
 }
