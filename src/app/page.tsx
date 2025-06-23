@@ -84,6 +84,10 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-20 flex flex-col items-center">
+
+       {/* Tailwind test */}
+    <div className="text-red-500 font-bold mb-4">Tailwind is working</div>
+    
       <div className="text-center mb-10">
         <h1 className="text-5xl font-extrabold text-slate-800 leading-tight mb-2">
           Make Smarter Property Decisions with <span className="text-blue-600">AI</span>
