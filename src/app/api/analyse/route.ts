@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { buildSuburbPrompt } from '@/utils/aiPromptBuilder'
+
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -162,21 +164,13 @@ export async function POST(req: NextRequest) {
 
     console.log('[DEBUG] Summarized data for AI:', JSON.stringify(summarizedData).length, 'chars');
 
-    const prompt = `
-You are a real estate investment analyst. Provide an investment overview and commentary for the following suburb in ${stateName}:
-
-Suburb: ${suburbName}
-LGA: ${lga}
-
-Data:
-${JSON.stringify(summarizedData)}
-
-Output should include:
-- Summary of current investment landscape
-- Key demographic or rental trends
-- Any notable risks or development opportunities
-- Overall growth outlook
-    `.trim();
+    const prompt = buildSuburbPrompt({
+      suburb: suburbName,
+      state: stateName,
+      lga,
+      data: combinedData,
+    });
+    
     
     console.log('[DEBUG] OpenAI prompt:\n', prompt);
 
