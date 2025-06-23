@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
 
     console.log('[DEBUG] Combined data ready, calling OpenAI...');
 
-    const MAX_ITEMS = 15;
+    const MAX_ITEMS = 25;
     
     // Smart sampling function to get representative data across the full range
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -121,25 +121,29 @@ export async function POST(req: NextRequest) {
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result: any[] = [];
-      const step = Math.floor(data.length / maxItems);
       
-      // Take items from beginning, middle, and end
-      for (let i = 0; i < maxItems; i++) {
-        const index = Math.floor(i * step);
-        if (index < data.length) {
-          result.push(data[index]);
+      // Always include the most recent 5 items first
+      const recentItems = data.slice(-5);
+      result.push(...recentItems);
+      
+      // Then sample from the rest of the data
+      const remainingData = data.slice(0, -5);
+      const remainingSlots = maxItems - result.length;
+      
+      if (remainingData.length > 0 && remainingSlots > 0) {
+        const step = Math.floor(remainingData.length / remainingSlots);
+        for (let i = 0; i < remainingSlots && i * step < remainingData.length; i++) {
+          const index = i * step;
+          result.push(remainingData[index]);
         }
       }
       
-      // Always include the most recent data (last few items)
-      const recentItems = data.slice(-3);
-      recentItems.forEach(item => {
-        if (!result.some(existing => JSON.stringify(existing) === JSON.stringify(item))) {
-          result.push(item);
-        }
-      });
+      // Remove duplicates and return
+      const uniqueResult = result.filter((item, index, self) => 
+        index === self.findIndex(t => JSON.stringify(t) === JSON.stringify(item))
+      );
       
-      return result.slice(0, maxItems);
+      return uniqueResult.slice(0, maxItems);
     };
 
     const summarizedData = {
