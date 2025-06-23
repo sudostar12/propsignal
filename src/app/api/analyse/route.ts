@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
       suburb: suburbName,
       state: stateName,
       lga,
-      data: combinedData,
+      data: summarizedData,
     });
     
     

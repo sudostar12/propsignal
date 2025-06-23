@@ -9,6 +9,7 @@ export function buildSuburbPrompt({
   suburb: string;
   state: string;
   lga: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
 }): string {
   return `
