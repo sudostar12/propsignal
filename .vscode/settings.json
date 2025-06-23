@@ -1,0 +1,10 @@
+{
+    "tailwindCSS.includeLanguages": {
+      "plaintext": "html",
+      "javascript": "javascript",
+      "typescript": "typescript",
+      "typescriptreact": "typescriptreact"
+    },
+    "tailwindCSS.experimental.configFile": "./tailwind.config.js"
+  }
+  
