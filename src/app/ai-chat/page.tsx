@@ -3,12 +3,16 @@
 import { useState } from 'react';
 
 export default function AIChatPage() {
-  const [messages, setMessages] = useState([{ role: 'assistant', content: 'Hi! Ask me anything about property in Victoria.' }]);
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: 'Hi there! I can help you compare suburbs, check investment potential, or understand rental returns in Victoria.\n\nYou can start by asking something like:\n- "Compare Werribee and Point Cook for investment"\n- "What’s the rental yield in Ballarat?"\n- "Is Cranbourne a good family suburb?"' }
+  ]);
   const [input, setInput] = useState('');
 
-  const sendMessage = async () => {
-    if (!input) return;
+  async function sendMessage() {
+    if (!input.trim()) return;
+
     const updatedMessages = [...messages, { role: 'user', content: input }];
+    setMessages(updatedMessages);
 
     const res = await fetch('/api/ai-chat', {
       method: 'POST',
@@ -19,25 +23,44 @@ export default function AIChatPage() {
     const data = await res.json();
     setMessages([...updatedMessages, { role: 'assistant', content: data.reply }]);
     setInput('');
-  };
+  }
 
   return (
-    <main className="max-w-xl mx-auto p-4">
-      <h1 className="text-xl font-bold mb-4">💬 AI Property Chat</h1>
-      <div className="bg-gray-100 h-96 overflow-y-auto p-4 rounded mb-2 text-sm">
-        {messages.map((m, i) => (
-          <div key={i} className={`mb-1 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-            {m.content}
-          </div>
-        ))}
+    <main className="max-w-3xl mx-auto px-4 py-6">
+      <div className="bg-white shadow-md rounded-2xl p-6 border border-gray-200">
+        <h1 className="text-2xl font-semibold mb-2">💬 PropSignal AI Chat</h1>
+        <p className="text-sm text-gray-500 mb-4">Ask anything about Victorian suburbs: rental yield, property comparisons, family suitability, infrastructure and more.</p>
+
+        <div className="h-[400px] overflow-y-auto bg-gray-50 rounded-md p-4 text-sm mb-4 space-y-3 border">
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`whitespace-pre-wrap ${
+                m.role === 'user' ? 'text-right text-blue-700' : 'text-left text-gray-700'
+              }`}
+            >
+              {m.content}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="e.g. Compare Werribee and Tarneit for investment"
+            className="flex-1 p-2 border border-gray-300 rounded-md"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+          />
+          <button
+            onClick={sendMessage}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          >
+            Send
+          </button>
+        </div>
       </div>
-      <input
-        className="w-full p-2 border rounded"
-        placeholder="Ask about a suburb (e.g. 'Is Werribee a good investment?')"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-      />
     </main>
   );
 }
