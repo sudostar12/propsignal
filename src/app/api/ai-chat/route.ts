@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     });
 
     detected_intent = intentDetection.choices[0].message.content?.toLowerCase().trim();
-    if (!['invest', 'live', 'rent'].includes(detected_intent)) {
+    if (!['invest', 'live', 'rent'].includes(detected_intent ?? '')) {
       detected_intent = null; // fallback in case GPT returns something unexpected
     }
   } catch (error) {
