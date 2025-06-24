@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
 import OpenAI from 'openai';
 import { buildSuburbPrompt } from '../../../utils/aiPromptBuilder';
 
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function GET() {

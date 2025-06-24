@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { supabase } from '../../../lib/supabaseClient';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { messages } = body;
+
+  const user_input = messages[messages.length - 1].content;
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4',
@@ -14,7 +17,7 @@ export async function POST(req: NextRequest) {
       {
         role: 'system',
         content: `
-You are PropSignal AI, a professional buyer’s agent assistant helping users with residential property insights in Victoria, Australia.
+You are PropSignal AI, a professional buyer's agent assistant helping users with residential property insights in Victoria, Australia.
 
 Your job is to provide structured, practical responses based on:
 - Median house price
@@ -36,6 +39,12 @@ Keep responses clear, semi-formal, and insightful.
       ...messages,
     ],
   });
+  const ai_response = completion.choices[0].message.content || '';
+  // 📝 Log to Supabase
+  await supabase.from('ai_chat_logs').insert({
+    user_input,
+    ai_response,
+  });
 
-  return NextResponse.json({ reply: completion.choices[0].message.content });
+  return NextResponse.json({ reply: ai_response });
 }
