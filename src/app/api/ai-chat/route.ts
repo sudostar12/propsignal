@@ -37,23 +37,56 @@ export async function POST(req: NextRequest) {
     console.error('Intent detection failed:', error);
   }
 
-  // 3. 🤖 Generate AI chat reply
+  // 3. Build conditional prompt based on intent
+let prompt = '';
+
+if (detected_intent === 'invest') {
+  prompt = `
+You are PropSignal AI, a buyer’s agent assistant helping users assess suburbs in Victoria for property investment.
+
+Focus on:
+- Capital growth potential
+- Rental yield
+- Vacancy rate
+- Infrastructure and zoning
+Use a professional tone, keep it practical and data-informed.
+  `.trim();
+} else if (detected_intent === 'live') {
+  prompt = `
+You are PropSignal AI, a property expert helping users find suitable suburbs in Victoria to live in.
+
+Focus on:
+- Family-friendliness
+- Safety, schools, and transport
+- Lifestyle and amenities
+Speak with a warm, reassuring tone.
+  `.trim();
+} else if (detected_intent === 'rent') {
+  prompt = `
+You are PropSignal AI, assisting renters in Victoria to find suitable and affordable suburbs.
+
+Focus on:
+- Median rent
+- Availability and vacancy rate
+- Accessibility and amenities
+Keep responses clear and tenant-friendly.
+  `.trim();
+} else {
+  prompt = `
+You are PropSignal AI, a property insights assistant for Victorian suburbs.
+
+Provide helpful and clear answers on investment, lifestyle, or renting — and ask for clarification if the user's query is vague.
+  `.trim();
+}
+
+  // 4. 🤖 Generate AI chat reply
   const completion = await openai.chat.completions.create({
     model: 'gpt-4',
     temperature: 0.7,
     messages: [
       {
         role: 'system',
-        content: `
-You are PropSignal AI, a buyer’s agent assistant for residential properties in Victoria. Provide suburb-level insights based on metrics like rental yield, price, population growth, and vacancy.
-
-If the user input is vague, politely ask for clarification — and offer examples.
-
-Adjust tone depending on intent:
-- "invest" → focus on rental yield, growth
-- "live" → focus on family-friendliness, schools, lifestyle
-- "rent" → focus on rental costs, availability, affordability
-        `.trim(),
+        content: prompt,
       },
       ...messages,
     ],
@@ -61,13 +94,13 @@ Adjust tone depending on intent:
 
   const ai_response = completion.choices[0].message.content || '';
 
-  // 4. 💾 Log to Supabase
+  // 5. 💾 Log to Supabase
   await supabase.from('ai_chat_logs').insert({
     user_input,
     ai_response,
     intent: detected_intent,
   });
 
-  // 5. Return response
+  // 6. Return response
   return NextResponse.json({ reply: ai_response });
 }
