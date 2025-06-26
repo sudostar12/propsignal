@@ -6,7 +6,9 @@ type Message = {
   role: 'user' | 'assistant';
   content: string;
   uuid?: string;
+  feedbackGiven?: boolean;
 };
+
 
 
 export default function AIChatPage() {
@@ -31,7 +33,13 @@ export default function AIChatPage() {
           'Content-Type': 'application/json',
         },
       });
-      alert('Thanks for your feedback!');
+
+       // Update feedback state for that message
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.uuid === uuid ? { ...msg, feedbackGiven: true } : msg
+      )
+    );
     } catch (error) {
       console.error('Feedback failed:', error);
     }
@@ -91,11 +99,18 @@ export default function AIChatPage() {
 
               {/* 🆕 Show feedback buttons under the most recent assistant message */}
               {m.role === 'assistant' && i === messages.length - 1 && m.uuid && (
-  <div className="flex gap-3 text-sm text-gray-400 pl-1 mt-1">
-    <button onClick={() => sendFeedback(m.uuid, 'positive')}>👍 Helpful</button>
-    <button onClick={() => sendFeedback(m.uuid, 'negative')}>👎 Not helpful</button>
+  <div className="flex items-center gap-4 text-sm text-gray-500 pl-1 mt-1">
+    {m.feedbackGiven ? (
+      <span className="text-green-600">✅ Feedback recorded</span>
+    ) : (
+      <>
+        <button onClick={() => sendFeedback(m.uuid!, 'positive')}>👍 Helpful</button>
+        <button onClick={() => sendFeedback(m.uuid!, 'negative')}>👎 Not helpful</button>
+      </>
+    )}
   </div>
 )}
+
 
             </div>
           ))}
