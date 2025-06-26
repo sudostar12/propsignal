@@ -38,9 +38,36 @@ export async function POST(req: NextRequest) {
     console.error('Intent detection failed:', error);
   }
 
-// 3. 🔍 Suburb detection (replace later with DB match)
-const suburbPattern = /\b([a-z\s]+)\b/i;
-const possible_suburb = user_input.match(suburbPattern)?.[1]?.trim();
+// 3. 🔍 Detect suburb match (case-insensitive, multi-word, DB-driven)
+let possible_suburb: string | null = null;
+let matching_suburbs: { suburb: string; state: string }[] = [];
+
+try {
+  const { data: suburbList, error } = await supabase
+    .from('suburbs')
+    .select('suburb, state');
+
+  if (error) {
+    console.error('Suburb list fetch failed:', error);
+  }
+
+  if (suburbList && suburbList.length > 0) {
+    const input = user_input.toLowerCase();
+
+    // Match any suburb that appears in input
+    matching_suburbs = suburbList.filter((entry) =>
+      new RegExp(`\\b${entry.suburb.toLowerCase()}\\b`, 'i').test(input)
+    );
+
+    // If there's a single unambiguous match, use it
+    if (matching_suburbs.length === 1) {
+      possible_suburb = matching_suburbs[0].suburb;
+    }
+  }
+} catch (e) {
+  console.error('Suburb match error:', e);
+}
+
 
 // 4. 🎯 Clarify Vague prompts
 if (!detected_intent && !possible_suburb) {
@@ -69,6 +96,20 @@ if (detected_intent && !possible_suburb) {
     message: `Got it — you're looking to ${detected_intent}. Could you let me know which suburb you're thinking about?\n\nFor example:\n• "Rental yield in Sunshine Coast"\n• "Best family suburbs under $800k in VIC"`
   });
 }
+
+// 4.5 🔁 If suburb matches multiple states, clarify
+if (matching_suburbs.length > 1) {
+  const options = matching_suburbs
+    .map((s) => `${s.suburb}, ${s.state}`)
+    .join('\n• ');
+
+  return NextResponse.json({
+    role: 'assistant',
+    clarification: true,
+    message: `Thanks! The suburb "${matching_suburbs[0].suburb}" exists in multiple states.\n\nWhich one are you interested in?\n• ${options}\n\nOnce I know the state, I can give you precise insights.`,
+  });
+}
+
 
   // 5. Conditional prompt logic based on intent
 let prompt = '';
