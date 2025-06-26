@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 export default function AIChatPage() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hi there! I can help you compare suburbs, check investment potential, or understand rental returns in Victoria.\n\nYou can start by asking something like:\n- "Compare Werribee and Point Cook for investment"\n- "What’s the rental yield in Ballarat?"\n- "Is Cranbourne a good family suburb?"' }
+    { role: 'assistant', content: 'Hi there! I can help you compare suburbs, check investment potential, or understand rental returns in Australia.\n\nYou can start by asking something like:\n- "Compare Box Hill and Doncaster for investment"\n- "What’s the rental yield in Ballarat?"\n- "Is Cranbourne a good family suburb?"' }
   ]);
   const [input, setInput] = useState('');
 
@@ -29,7 +29,7 @@ export default function AIChatPage() {
     <main className="max-w-3xl mx-auto px-4 py-6">
       <div className="bg-white shadow-md rounded-2xl p-6 border border-gray-200">
         <h1 className="text-2xl font-semibold mb-2">💬 PropSignal AI Chat</h1>
-        <p className="text-sm text-gray-500 mb-4">Ask anything about Victorian suburbs: rental yield, property comparisons, family suitability, infrastructure and more.</p>
+        <p className="text-sm text-gray-500 mb-4">Ask anything about Australian residential properties: rental yield, property comparisons, family suitability, infrastructure and more.</p>
 
         <div className="h-[400px] overflow-y-auto bg-gray-50 rounded-md p-4 text-sm mb-4 space-y-3 border">
           {messages.map((m, i) => (
