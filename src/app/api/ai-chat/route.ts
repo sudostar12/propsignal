@@ -40,16 +40,28 @@ try {
 }
 
 
-// 3. 🛑 Respond early to vague input
+// 3. 🛑 Respond early to vague input with escalating clarification
 if (is_vague_input) {
   clarification_count += 1;
+
+  let message = `Hi there! To help you better, could you let me know your goal?\n\nAre you looking to:\n• 🏡 Buy to live?\n• 📈 Invest?\n• 🏠 Rent a property?\n\nJust mention a suburb or goal — I’ll guide you from there!`;
+
+  if (clarification_count === 2) {
+    message = `I understand you're unsure — no worries at all! 😊\n\nHere are some ways you could begin:\n• "Compare Werribee and Tarneit for investment"\n• "What's a good suburb to rent under $500/week?"\n• "I'm moving with family — where should I live in VIC?"\n\nOr just name any suburb you’ve heard of — I’ll help from there!`;
+  }
+
+  if (clarification_count >= 3) {
+    message = `Sounds like you're exploring — that's great! 🎯\n\nQuick help:\n1. Property investment\n2. Renting a place\n3. Finding a suburb to live in\n\nJust reply with a number (e.g. "1") or a suburb name — I’ll take care of the rest.`;
+  }
+
   return NextResponse.json({
     role: 'assistant',
     clarification: true,
-    message: `Hi there! To help you better, could you let me know your goal?\n\nAre you looking to:\n• 🏡 Buy to live?\n• 📈 Invest?\n• 🏠 Rent a property?\n\nJust mention a suburb or goal — I’ll guide you from there!`,
+    message,
     clarification_count,
   });
 }
+
 
   // 4. 🔍 Detect user intent
   let detected_intent = null;
