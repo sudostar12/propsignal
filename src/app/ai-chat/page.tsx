@@ -42,7 +42,7 @@ export default function AIChatPage() {
     if (!input.trim()) return;
 
     const updatedMessages = [...messages, { role: 'user', content: input }];
-    setMessages(updatedMessages);
+    setMessages(updatedMessages as Message[]);
 
     const res = await fetch('/api/ai-chat', {
       method: 'POST',
@@ -52,11 +52,10 @@ export default function AIChatPage() {
 
     const data = await res.json();
     setMessages([
-      ...updatedMessages,
+      ...updatedMessages as Message[],
       {
         role: 'assistant',
         content: data.reply,
-        // TODO: Return and include uuid from your API in this message object
         uuid: data.uuid,
       },
     ]);
