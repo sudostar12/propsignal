@@ -79,7 +79,14 @@ if (is_vague_input) {
       messages: [
         {
           role: 'system',
-          content: `You are a property assistant. Your task is to classify user intent as one of: "invest", "live", or "rent". Only return one of those three words.`
+          content: `You are a property assistant. Classify user intent as one of:
+          - "invest" (buy to generate returns)
+          - "live" (buy or rent for personal residence)
+          - "rent" (seeking to lease a home)
+          - "unsure" (user is confused, browsing, or unclear)
+
+          Return only one word from the list.`
+
         },
         {
           role: 'user',
@@ -89,12 +96,32 @@ if (is_vague_input) {
     });
 
     detected_intent = intentDetection.choices[0].message.content?.toLowerCase().trim();
-    if (!['invest', 'live', 'rent'].includes(detected_intent ?? '')) {
+    if (!['invest', 'live', 'rent', 'unsure'].includes(detected_intent ?? '')) {
       detected_intent = null; // fallback in case GPT returns something unexpected
     }
   } catch (error) {
     console.error('Intent detection failed:', error);
   }
+
+  const lowerInput = user_input.toLowerCase().trim();
+
+if (clarificationCount >= 3 && !detected_intent) {
+  // Handle numbered replies
+  if (['1', 'one'].includes(lowerInput)) {
+    detected_intent = 'invest';
+  } else if (['2', 'two'].includes(lowerInput)) {
+    detected_intent = 'rent';
+  } else if (['3', 'three'].includes(lowerInput)) {
+    detected_intent = 'live';
+  } else if (
+    /rent/i.test(lowerInput) ||
+    /living|home|place|move/i.test(lowerInput) ||
+    /don'?t know|no idea|just browsing|new here|explore/i.test(lowerInput)
+  ) {
+    detected_intent = 'unsure';
+  }
+}
+
 
 // 3. 🔍 Detect suburb match (case-insensitive, multi-word, DB-driven)
 let possible_suburb: string | null = null;
@@ -113,14 +140,27 @@ try {
     const input = user_input.toLowerCase();
 
     // Match any suburb that appears in input
-    matching_suburbs = suburbList.filter((entry) =>
-      new RegExp(`\\b${entry.suburb.toLowerCase()}\\b`, 'i').test(input)
+    matching_suburbs = suburbList.filter(({suburb}) =>
+      new RegExp(`\\b${suburb.toLowerCase()}\\b`, 'i').test(input)
     );
 
     // If there's a single unambiguous match, use it
     if (matching_suburbs.length === 1) {
       possible_suburb = matching_suburbs[0].suburb;
     }
+    if (matching_suburbs.length > 1) {
+      const options = matching_suburbs.map(s => `${s.suburb}, ${s.state}`).join('\n• ');
+    
+      clarificationCount += 1;
+    
+      return NextResponse.json({
+        role: 'assistant',
+        clarification: true,
+        message: `Thanks! The suburb "${matching_suburbs[0].suburb}" exists in multiple states.\n\nWhich one are you interested in?\n• ${options}\n\nOnce I know the state, I can give you precise insights.`,
+        clarification_count: clarificationCount,
+      });
+    }
+    
   }
 } catch (e) {
   console.error('Suburb match error:', e);
@@ -211,7 +251,15 @@ Focus on:
 - Accessibility and amenities
 Keep responses clear and tenant-friendly.
   `.trim();
-} else {
+} else if (detected_intent === 'unsure') { //update this to be more specific to unsure intent
+  prompt = `
+You are PropSignal AI, helping new users unfamiliar with the property market. The user is unsure, so guide them gently by offering beginner pathways.
+
+Be proactive, clear, and welcoming. Suggest ways to start exploring (e.g. "top VIC suburbs for rental yield", or "affordable family suburbs"). If they respond with a number or idea, help them continue.
+
+Act like a property expert who is also a mentor.
+`.trim();
+}else {
   prompt = `
 You are PropSignal AI, a property insights assistant for Australian suburbs.
 
