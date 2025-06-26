@@ -9,6 +9,7 @@ type Message = {
   feedbackGiven?: boolean;
 };
 
+const [clarificationCount, setClarificationCount] = useState(0);
 
 
 export default function AIChatPage() {
@@ -60,11 +61,13 @@ export default function AIChatPage() {
     const res = await fetch('/api/ai-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: updatedMessages }),
+      body: JSON.stringify({ messages: updatedMessages, clarification_count: clarificationCount }),
     });
 
     const data = await res.json();
-
+    if (data.clarification_count) {
+      setClarificationCount(data.clarification_count);
+    }
     // Add assistant message with uuid, ensure correct type
 
 const assistantReply = data.reply || data.message || "Sorry, I couldn't process your request. Please try again.";

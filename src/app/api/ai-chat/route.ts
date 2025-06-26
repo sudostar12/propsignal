@@ -7,13 +7,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 export async function POST(req: NextRequest) {
   try {
   const body = await req.json();
-  const { messages } = body;
-
+  const { messages, clarification_count = 0 } = body;
+  let clarificationCount = clarification_count;
   // 1. Extract user's most recent message
   const user_input = messages[messages.length - 1]?.content || '';
-
-  let clarification_count = 0;
-
 
 // 2. 🔍 Check for vague input using GPT
 let is_vague_input = false;
@@ -42,7 +39,7 @@ try {
 
 // 3. 🛑 Respond early to vague input with escalating clarification
 if (is_vague_input) {
-  clarification_count += 1;
+  clarificationCount += 1;
 
   let message = `Hi there! To help you better, could you let me know your goal?\n\nAre you looking to:\n• 🏡 Buy to live?\n• 📈 Invest?\n• 🏠 Rent a property?\n\nJust mention a suburb or goal — I’ll guide you from there!`;
 
@@ -58,7 +55,7 @@ if (is_vague_input) {
     role: 'assistant',
     clarification: true,
     message,
-    clarification_count,
+    clarification_count: clarificationCount, 
   });
 }
 
