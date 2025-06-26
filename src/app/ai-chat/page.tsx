@@ -83,12 +83,13 @@ export default function AIChatPage() {
               </div>
 
               {/* 🆕 Show feedback buttons under the most recent assistant message */}
-              {m.role === 'assistant' && i === messages.length - 1 && (
-                <div className="flex gap-3 text-sm text-gray-400 pl-1 mt-1">
-                  <button onClick={() => sendFeedback(m.uuid, 'positive')}>👍 Helpful</button>
-                  <button onClick={() => sendFeedback(m.uuid, 'negative')}>👎 Not helpful</button>
-                </div>
-              )}
+              {m.role === 'assistant' && i === messages.length - 1 && m.uuid && (
+  <div className="flex gap-3 text-sm text-gray-400 pl-1 mt-1">
+    <button onClick={() => sendFeedback(m.uuid, 'positive')}>👍 Helpful</button>
+    <button onClick={() => sendFeedback(m.uuid, 'negative')}>👎 Not helpful</button>
+  </div>
+)}
+
             </div>
           ))}
         </div>
