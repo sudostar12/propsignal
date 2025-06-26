@@ -9,6 +9,15 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { messages, clarification_count = 0 } = body;
   let clarificationCount = clarification_count;
+
+  // 0. 🔍 Check for vague input using GPT// 🧠 Fallback: Estimate clarificationCount from previous assistant replies (in case client didn't track it)
+if (!clarificationCount || clarificationCount === 0) {
+  clarificationCount = messages.filter(
+    (m: any) => m.role === 'assistant' && m.clarification === true
+  ).length;
+}
+console.log('💡 Clarification Count inferred:', clarificationCount);
+
   // 1. Extract user's most recent message
   const user_input = messages[messages.length - 1]?.content || '';
 
@@ -104,6 +113,23 @@ if (is_vague_input) {
   }
 
   const lowerInput = user_input.toLowerCase().trim();
+
+  if (!detected_intent) {
+    for (let i = messages.length - 2; i >= 0; i--) {
+      const content = messages[i]?.content?.toLowerCase() || '';
+      if (content.includes('invest')) {
+        detected_intent = 'invest';
+        break;
+      } else if (content.includes('live')) {
+        detected_intent = 'live';
+        break;
+      } else if (content.includes('rent')) {
+        detected_intent = 'rent';
+        break;
+      }
+    }
+  }
+  
 
 if (clarificationCount >= 3 && !detected_intent) {
   // Handle numbered replies
