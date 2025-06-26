@@ -9,10 +9,9 @@ type Message = {
   feedbackGiven?: boolean;
 };
 
-const [clarificationCount, setClarificationCount] = useState<number>(0);
-
 
 export default function AIChatPage() {
+  const [clarificationCount, setClarificationCount] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
