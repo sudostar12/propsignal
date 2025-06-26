@@ -4,19 +4,29 @@ import { supabase } from '@/lib/supabaseClient';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+type Message = {
+  role: 'user' | 'assistant';
+  content: string;
+  clarification?: boolean;
+  uuid?: string;
+};
+
+
 export async function POST(req: NextRequest) {
   try {
   const body = await req.json();
   const { messages, clarification_count = 0 } = body;
   let clarificationCount = clarification_count;
 
-  // 0. 🔍 Check for vague input using GPT// 🧠 Fallback: Estimate clarificationCount from previous assistant replies (in case client didn't track it)
-if (!clarificationCount || clarificationCount === 0) {
-  clarificationCount = messages.filter(
-    (m: any) => m.role === 'assistant' && m.clarification === true
+// 0. 🔍 Fallback: Estimate clarificationCount from assistant replies if not tracked by client
+if (!clarificationCount) {
+  clarificationCount = (messages as Message[]).filter(
+    (m) => m.role === 'assistant' && m.clarification === true
   ).length;
 }
+
 console.log('💡 Clarification Count inferred:', clarificationCount);
+
 
   // 1. Extract user's most recent message
   const user_input = messages[messages.length - 1]?.content || '';
