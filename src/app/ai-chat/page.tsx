@@ -66,14 +66,18 @@ export default function AIChatPage() {
     const data = await res.json();
 
     // Add assistant message with uuid, ensure correct type
-    setMessages([
-      ...updatedMessages,
-      {
-        role: 'assistant' as const,
-        content: data.reply,
-        uuid: data.uuid,
-      },
-    ]);
+
+const assistantReply = data.reply || data.message || "Sorry, I couldn't process your request. Please try again.";
+
+setMessages([
+  ...updatedMessages,
+  {
+    role: 'assistant',
+    content: assistantReply,
+    uuid: data.uuid,
+  },
+]);
+
     setInput('');
   }
 
