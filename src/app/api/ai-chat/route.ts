@@ -31,6 +31,26 @@ console.log('💡 Clarification Count inferred:', clarificationCount);
   // 1. Extract user's most recent message
   const user_input = messages[messages.length - 1]?.content || '';
 
+
+  // DS suggested this
+const genericQueries = [
+  "weather", "hi", "hello", "how are you", "what's up", "help", 
+  "who are you", "what can you do", "hey", "sup"
+];
+
+const isGenericQuery = genericQueries.some(phrase => 
+  user_input.toLowerCase().includes(phrase)
+);
+
+if (isGenericQuery) {
+  return NextResponse.json({
+    role: 'assistant',
+    message: `Hey there! 👋 I’m your Aussie property assistant. I can help with suburb insights, investment tips, or finding a place to live. Try something like:\n\n• "Best suburbs for families in Melbourne?"\n• "Where should I invest under $600k?"\n• "What’s rental demand like in Brisbane?"\n\nOr just chat — I’m flexible! 😊`,
+    clarification: true,
+  });
+}
+
+
 // 2. 🔍 Check for vague input using GPT
 let is_vague_input = false;
 try {
@@ -64,26 +84,29 @@ if (is_vague_input) {
       input.includes(word)
     ) || ['1', '2', '3'].includes(input);
 
-  if (!containsIntent) {
-    clarificationCount += 1;
-
-    let message = `Hi there! To help you better, could you let me know your goal?\n\nAre you looking to:\n• 🏡 Buy to live?\n• 📈 Invest?\n• 🏠 Rent a property?\n\nJust mention a suburb or goal — I’ll guide you from there!`;
-
-    if (clarificationCount === 2) {
-      message = `I understand you're unsure — no worries at all! 😊\n\nHere are some ways you could begin:\n• "Compare Werribee and Tarneit for investment"\n• "What's a good suburb to rent under $500/week?"\n• "I'm moving with family — where should I live in VIC?"\n\nOr just name any suburb you’ve heard of — I’ll help from there!`;
+    if (is_vague_input && !containsIntent) { //DS suggested this
+      clarificationCount += 1;
+    
+      let message = "";
+      switch (clarificationCount) {
+        case 1:
+          message = `Hey! 👋 No worries if you're unsure — I’m here to help explore. Are you thinking about:\n\n• 🏡 **Buying a home**\n• 📈 **Investing in property**\n• 🏠 **Renting somewhere new**\n\nOr just say a suburb name (e.g., "Tell me about Footscray") and I’ll dive in!`;
+          break;
+        case 2:
+          message = `All good! Property can be overwhelming. Let’s simplify:\n\n1. "Top suburbs for rentals under $500?"\n2. "Where’s hot for investment in QLD?"\n3. "Best family suburbs near schools?"\n\nOr throw me a curveball — I can handle it! 😄`;
+          break;
+        default:
+          message = `Brain freeze? Happens to the best of us! 🧠❄️\n\nTry one of these or just say *anything*:\n• "Compare Sydney vs. Melbourne rentals"\n• "Cheapest suburbs 1hr from CBD"\n• "Just browsing — surprise me!"\n\nI’ll meet you where you’re at.`;
+      }
+    
+      return NextResponse.json({
+        role: 'assistant',
+        clarification: true,
+        message,
+        clarification_count: clarificationCount,
+      });
     }
 
-    if (clarificationCount >= 3) {
-      message = `Sounds like you're exploring — that's great! 🎯\n\nQuick help:\n1. Property investment\n2. Renting a place\n3. Finding a suburb to live in\n\nJust reply with a number (e.g. "1") or a suburb name — I’ll take care of the rest.`;
-    }
-
-    return NextResponse.json({
-      role: 'assistant',
-      clarification: true,
-      message,
-      clarification_count: clarificationCount,
-    });
-  }
   // else: vague message *did* contain a useful keyword — continue as normal
 }
 
@@ -238,18 +261,17 @@ if (detected_intent && !possible_suburb) {
   });
 }
 
-// 4.5 🔁 If suburb matches multiple states, clarify
+// 4.5 🔁 If suburb matches multiple states, clarify (DS suggested this)
 if (matching_suburbs.length > 1) {
   const options = matching_suburbs
-    .map((s) => `${s.suburb}, ${s.state}`)
-    .join('\n• ');
+    .map((s) => `📍 **${s.suburb}, ${s.state}**`)
+    .join('\n');
 
-    clarificationCount += 1;
-    return NextResponse.json({
+  return NextResponse.json({
     role: 'assistant',
     clarification: true,
-    message: `Thanks! The suburb "${matching_suburbs[0].suburb}" exists in multiple states.\n\nWhich one are you interested in?\n• ${options}\n\nOnce I know the state, I can give you precise insights.`,
-    clarification_count: clarificationCount,
+    message: `Oops, multiple ${matching_suburbs[0].suburb}s exist! Which one?\n\n${options}\n\n*Pro tip:* Include the state next time (e.g., "Frankston VIC") to skip this step! 😉`,
+    clarification_count: clarificationCount + 1,
   });
 }
 
@@ -289,11 +311,16 @@ Keep responses clear and tenant-friendly.
   `.trim();
 } else if (detected_intent === 'unsure') { //update this to be more specific to unsure intent
   prompt = `
-You are PropSignal AI, helping new users unfamiliar with the property market. The user is unsure, so guide them gently by offering beginner pathways.
+You are PropSignal AI, a friendly Australian property expert. The user seems unsure or might be testing the waters. Respond with:
 
-Be proactive, clear, and welcoming. Suggest ways to start exploring (e.g. "top VIC suburbs for rental yield", or "affordable family suburbs"). If they respond with a number or idea, help them continue.
+- **Warmth and patience**: Use emojis sparingly (e.g., 😊, 🏡).
+- **Open-ended suggestions**: Offer 2-3 starting points (investment, lifestyle, renting).
+- **Flexibility**: Allow non-property chats (e.g., "Just browsing!" → "No stress! Want a fun fact about Melbourne's housing market?").
 
-Act like a property expert who is also a mentor.
+Example responses:
+- "Keen to explore? Try: 'Best suburbs for first-home buyers?' or 'Where’s rental demand growing fastest?'"
+- "No rush! Property’s a big decision. Want to compare two suburbs? Just name them!"
+- "All good! Here’s a hot tip: Regional VIC has 6%+ rental yields. Want details?"
 `.trim();
 }else {
   prompt = `
