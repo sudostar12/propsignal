@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req: NextRequest) {
+  try {
   const body = await req.json();
   const { messages } = body;
 
@@ -37,11 +38,11 @@ export async function POST(req: NextRequest) {
     console.error('Intent detection failed:', error);
   }
 
-// 3. 🔍 Optional: crude suburb pattern matching (replace later with DB match)
+// 3. 🔍 Suburb detection (replace later with DB match)
 const suburbPattern = /\b([a-z\s]+)\b/i;
 const possible_suburb = user_input.match(suburbPattern)?.[1]?.trim();
 
-// 4. 🎯 Vague prompt clarification logic
+// 4. 🎯 Clarify Vague prompts
 if (!detected_intent && !possible_suburb) {
   // No intent + no suburb
   return NextResponse.json({
@@ -69,7 +70,7 @@ if (detected_intent && !possible_suburb) {
   });
 }
 
-  // 5. Build conditional prompt based on intent
+  // 5. Conditional prompt logic based on intent
 let prompt = '';
 
 if (detected_intent === 'invest') {
@@ -133,10 +134,10 @@ Provide helpful and clear answers on investment, lifestyle, or renting — and a
     user_input,
     ai_response,
     intent: detected_intent,
-    suburb: possible_suburb, // if you have suburb detection too
+    suburb: possible_suburb,
   })
-  .select()
-  .single();
+  .select('uuid');
+  
 
 if (error) {
   console.error('Logging failed:', error);
@@ -145,6 +146,14 @@ if (error) {
 // 8. Send uuid back with response
 return NextResponse.json({
   reply: ai_response,
-  uuid: data?.uuid || null, // <-- add this
-})
+  uuid: data?.[0]?.uuid || null,
+});
+} catch (error) {
+  console.error('❌ API /api/ai-chat failed:', error);
+
+  return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    status: 500,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 }
