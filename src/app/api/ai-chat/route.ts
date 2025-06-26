@@ -47,7 +47,7 @@ if (!detected_intent && !possible_suburb) {
   return NextResponse.json({
     role: 'assistant',
     clarification: true,
-    message: `Could you clarify which suburb you're interested in? Also, are you looking to invest, live, or rent?\n\nEach goal affects the criteria — for example:\n• "Compare Werribee and Tarneit for investment"\n• "Best family suburbs under $900k"\n• "Rental yield in Docklands for units"`
+    message: `Could you clarify which suburb you're interested in? Also, are you looking to invest, live, or rent?\n\nEach goal affects the criteria — for example:\n• "Compare Box Hill and Doncaster for investment"\n• "Best family suburbs under $900k"\n• "Rental yield in Docklands for units"`
   });
 }
 
@@ -127,12 +127,24 @@ Provide helpful and clear answers on investment, lifestyle, or renting — and a
   const ai_response = completion.choices[0].message.content || '';
 
   // 7. 💾 Log to Supabase
-  await supabase.from('ai_chat_logs').insert({
+  const { data, error } = await supabase
+  .from('ai_chat_logs')
+  .insert({
     user_input,
     ai_response,
     intent: detected_intent,
-  });
+    suburb: possible_suburb, // if you have suburb detection too
+  })
+  .select()
+  .single();
 
-  // 8. Return response
-  return NextResponse.json({ reply: ai_response });
+if (error) {
+  console.error('Logging failed:', error);
+}
+
+// 8. Send uuid back with response
+return NextResponse.json({
+  reply: ai_response,
+  uuid: data?.uuid || null, // <-- add this
+})
 }
