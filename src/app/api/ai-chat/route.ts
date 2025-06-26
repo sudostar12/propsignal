@@ -12,7 +12,46 @@ export async function POST(req: NextRequest) {
   // 1. Extract user's most recent message
   const user_input = messages[messages.length - 1]?.content || '';
 
-  // 2. 🔍 Detect user intent
+  let clarification_count = 0;
+
+
+// 2. 🔍 Check for vague input using GPT
+let is_vague_input = false;
+try {
+  const vaguenessCheck = await openai.chat.completions.create({
+    model: 'gpt-4',
+    temperature: 0,
+    messages: [
+      {
+        role: 'system',
+        content: `You're a classifier. Given a user message, classify it as either "vague" or "specific". A vague message is unclear, too short, or lacks actionable detail (e.g. "hi", "help", "i don't know", "what can you do"). Only return one word: "vague" or "specific".`,
+      },
+      {
+        role: 'user',
+        content: user_input,
+      },
+    ],
+  });
+
+  const classification = vaguenessCheck.choices[0].message.content?.toLowerCase().trim();
+  if (classification === 'vague') is_vague_input = true;
+} catch (error) {
+  console.error('Vagueness check failed:', error);
+}
+
+
+// 3. 🛑 Respond early to vague input
+if (is_vague_input) {
+  clarification_count += 1;
+  return NextResponse.json({
+    role: 'assistant',
+    clarification: true,
+    message: `Hi there! To help you better, could you let me know your goal?\n\nAre you looking to:\n• 🏡 Buy to live?\n• 📈 Invest?\n• 🏠 Rent a property?\n\nJust mention a suburb or goal — I’ll guide you from there!`,
+    clarification_count,
+  });
+}
+
+  // 4. 🔍 Detect user intent
   let detected_intent = null;
   try {
     const intentDetection = await openai.chat.completions.create({
@@ -72,28 +111,35 @@ try {
 // 4. 🎯 Clarify Vague prompts
 if (!detected_intent && !possible_suburb) {
   // No intent + no suburb
+  clarification_count += 1;
   return NextResponse.json({
     role: 'assistant',
     clarification: true,
-    message: `Could you clarify which suburb you're interested in? Also, are you looking to invest, live, or rent?\n\nEach goal affects the criteria — for example:\n• "Compare Box Hill and Doncaster for investment"\n• "Best family suburbs under $900k"\n• "Rental yield in Docklands for units"`
+    message: `Could you clarify which suburb you're interested in? Also, are you looking to invest, live, or rent?\n\nEach goal affects the criteria — for example:\n• "Compare Box Hill and Doncaster for investment"\n• "Best family suburbs under $900k"\n• "Rental yield in Docklands for units"`,
+    clarification_count,
   });
+  
 }
 
 if (!detected_intent && possible_suburb) {
   // Suburb present, intent missing
+  clarification_count += 1;
   return NextResponse.json({
     role: 'assistant',
     clarification: true,
-    message: `Thanks for mentioning "${possible_suburb}". Just to guide you better — are you looking to invest, live, or rent in this suburb?\n\nEach goal shifts what I focus on:\n• Invest → growth, rental yield, approvals\n• Live → family-friendliness, safety, schools\n• Rent → rent levels, affordability, vacancy\n\nLet me know and I’ll tailor the insights for ${possible_suburb}!`
+    message: `Thanks for mentioning "${possible_suburb}". Just to guide you better — are you looking to invest, live, or rent in this suburb?\n\nEach goal shifts what I focus on:\n• Invest → growth, rental yield, approvals\n• Live → family-friendliness, safety, schools\n• Rent → rent levels, affordability, vacancy\n\nLet me know and I’ll tailor the insights for ${possible_suburb}!`,
+    clarification_count,
   });
 }
 
 if (detected_intent && !possible_suburb) {
   // Intent present, suburb missing
+  clarification_count += 1;
   return NextResponse.json({
     role: 'assistant',
     clarification: true,
-    message: `Got it — you're looking to ${detected_intent}. Could you let me know which suburb you're thinking about?\n\nFor example:\n• "Rental yield in Sunshine Coast"\n• "Best family suburbs under $800k in VIC"`
+    message: `Got it — you're looking to ${detected_intent}. Could you let me know which suburb you're thinking about?\n\nFor example:\n• "Rental yield in Sunshine Coast"\n• "Best family suburbs under $800k in VIC"`,
+    clarification_count,
   });
 }
 
@@ -103,13 +149,13 @@ if (matching_suburbs.length > 1) {
     .map((s) => `${s.suburb}, ${s.state}`)
     .join('\n• ');
 
-  return NextResponse.json({
+    clarification_count += 1;
+    return NextResponse.json({
     role: 'assistant',
     clarification: true,
     message: `Thanks! The suburb "${matching_suburbs[0].suburb}" exists in multiple states.\n\nWhich one are you interested in?\n• ${options}\n\nOnce I know the state, I can give you precise insights.`,
   });
 }
-
 
   // 5. Conditional prompt logic based on intent
 let prompt = '';
@@ -176,6 +222,7 @@ Provide helpful and clear answers on investment, lifestyle, or renting — and a
     ai_response,
     intent: detected_intent,
     suburb: possible_suburb,
+    clarification_count,
   })
   .select('uuid');
   
