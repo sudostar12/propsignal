@@ -41,9 +41,14 @@ export default function AIChatPage() {
   async function sendMessage() {
     if (!input.trim()) return;
 
-    const updatedMessages = [...messages, { role: 'user', content: input }];
-    setMessages(updatedMessages as Message[]);
+    // Append the new user message with correct type
+    const updatedMessages: Message[] = [
+      ...messages,
+      { role: 'user' as const, content: input }
+    ];
+    setMessages(updatedMessages);
 
+    // Call backend api
     const res = await fetch('/api/ai-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -51,10 +56,12 @@ export default function AIChatPage() {
     });
 
     const data = await res.json();
+
+    // Add assistant message with uuid, ensure correct type
     setMessages([
-      ...updatedMessages as Message[],
+      ...updatedMessages,
       {
-        role: 'assistant',
+        role: 'assistant' as const,
         content: data.reply,
         uuid: data.uuid,
       },

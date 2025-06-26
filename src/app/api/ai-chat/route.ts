@@ -151,7 +151,7 @@ return NextResponse.json({
 } catch (error) {
   console.error('❌ API /api/ai-chat failed:', error);
 
-  return new Response(JSON.stringify({ error: 'Internal server error' }), {
+  return new Response(JSON.stringify({ error: 'Sorry, something went wrong. Please try again later.' }), {
     status: 500,
     headers: { 'Content-Type': 'application/json' },
   });
