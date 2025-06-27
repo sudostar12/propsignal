@@ -50,29 +50,30 @@ async function detectGibberish(input: string): Promise<boolean> {
 }
 
 function getTypoResponse(input: string, isFollowUp: boolean): string {
-  // Don't try to correct follow-up messages
+  // Stage 1: Try gentle correction
+    const corrections: Record<string, string> = {
+      'hr ya': 'how are ya',
+      'hrya': 'how are ya', 
+      'nnr sur': 'not sure',
+      'din knw': "don't know"
+    };
+
+    const corrected = corrections[input.toLowerCase()] || 
+      (input.length <= 5 ? input : 'that');
+
+  // Phase 2: Determine response based on follow-up status
   if (isFollowUp) {
-    return `I'm not quite following. Want to try rephrasing? Or ask about Aussie property! 🏠`;
+    return `I'm not sure what you mean. Try one of these:\n` +
+           `• "Top suburbs for families"\n` +
+           `• "Best investment areas under $800k"\n` +
+           `• Or just say a suburb name`;
   }
 
-  // Expanded correction dictionary
-  const corrections: Record<string, string> = {
-    'hr ya': 'how are ya',
-    'hrya': 'how are ya',
-    'hyrs ya': 'how are ya',
-    'nto sur': 'not sure',
-    'adraid': 'afraid'
-  };
-
-  const corrected = corrections[input.toLowerCase()] || 
-    (input.length <= 5 ? input : 'that'); // Don't try to correct long inputs
-
-  const responses = [
-    `Did you mean "${corrected}"? Or ask me anything about Aussie property! 🏠`,
-    `Try again or ask something like "best suburbs under $700k?"`
-  ];
-
-  return responses[Math.floor(Math.random() * responses.length)];
+  // Initial response
+  return `Did you mean "${corrected}"? Ask about:\n` +
+         `• Suburbs to live/invest\n` +
+         `• Rental market insights\n` +
+         `• Property trends`;
 }
 
 // ======================
