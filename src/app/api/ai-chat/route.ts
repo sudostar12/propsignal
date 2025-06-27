@@ -11,7 +11,9 @@ type Message = {
   uuid?: string;
 };
 
-// Helper functions moved outside the POST function
+// ======================
+// Helper Functions
+// ======================
 async function detectGibberish(input: string): Promise<boolean> {
   const trimmed = input.trim().toLowerCase();
   
@@ -24,17 +26,17 @@ async function detectGibberish(input: string): Promise<boolean> {
   const typoPatterns = [
     /^[hw]a?[sz]{1,2}\s?y[ae]$/, // "hwss ya", "hws ya", etc
     /^n[o']?t?\s?s[uo]r/,        // "nto sur", "not sur"
-    /^[a-z]*[ae]{3,}[a-z]*$/      // Repeated vowels ("yaaa")
   ];
 
   if (typoPatterns.some(regex => regex.test(trimmed))) {
     return true;
   }
+ 
 
-  // 3. GPT-4 fallback for ambiguous cases
+  // 3. GPT-4o fallback for ambiguous cases
   try {
     const res = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o',  // CHANGED TO GPT-4O
       temperature: 0,
       messages: [{
         role: 'system',
@@ -47,28 +49,35 @@ async function detectGibberish(input: string): Promise<boolean> {
   }
 }
 
-function getTypoResponse(input: string): string {
+function getTypoResponse(input: string, isFollowUp: boolean): string {
+  // Don't try to correct follow-up messages
+  if (isFollowUp) {
+    return `I'm not quite following. Want to try rephrasing? Or ask about Aussie property! 🏠`;
+  }
+
   // Expanded correction dictionary
   const corrections: Record<string, string> = {
-    'hwss ya': 'how are ya',
-    'hyrs ya': 'how are ya', 
+    'hr ya': 'how are ya',
+    'hrya': 'how are ya',
+    'hyrs ya': 'how are ya',
     'nto sur': 'not sure',
-    'adraid': 'afraid',
-    'whas up': 'what\'s up',
-    'propert': 'property'
+    'adraid': 'afraid'
   };
 
   const corrected = corrections[input.toLowerCase()] || 
-    input.split('').filter(c => c.match(/[a-z]/i)).join(''); // Basic cleanup
+    (input.length <= 5 ? input : 'that'); // Don't try to correct long inputs
 
   const responses = [
     `Did you mean "${corrected}"? Or ask me anything about Aussie property! 🏠`,
-    `"${input}" → Maybe "${corrected}"? Either way, I can help with property questions! 😊`,
-    `No worries! Try again or ask something like "best suburbs under $700k?"`
+    `Try again or ask something like "best suburbs under $700k?"`
   ];
 
   return responses[Math.floor(Math.random() * responses.length)];
 }
+
+// ======================
+// Main API Handler
+// ======================
 
 export async function POST(req: NextRequest) {
   try {
@@ -88,18 +97,21 @@ export async function POST(req: NextRequest) {
     // 1. Extract user's most recent message
     const user_input = messages[messages.length - 1]?.content || '';
 
-    // Logic flow 1: Detect gibberish or typo
+    // ======================
+    // 1. Input Validation Layer
+    // ======================
+    // A. Gibberish/Typo Detection
     const isGibberishOrTypo = await detectGibberish(user_input);
 
     if (isGibberishOrTypo) {
       return NextResponse.json({
         role: 'assistant',
-        message: getTypoResponse(user_input),
+        message: getTypoResponse(user_input, messages.length > 1),
         clarification: true,
       });
     }
 
-    // Logic flow 2: Detect generic queries
+    // B. Generic Query Detection
     const genericQueries = [
       "weather", "hi", "hello", "how are you", "what's up", "help", 
       "who are you", "what can you do", "hey", "sup", 'what\'s up', 'how\'s it going', 
@@ -116,84 +128,22 @@ export async function POST(req: NextRequest) {
     if (isGenericQuery) {
       return NextResponse.json({
         role: 'assistant',
-        message: `🏡 G'day! I'm your Aussie property mate. Try:\n\n` + 
-          `• "Where should I invest $500k?"\n` +
-          `• "Best suburbs near good schools?"\n` +
-          `• Or just say a suburb name!\n\n` +
-          `(Or chat normally - I won't bite 😊)`,
+        message: `🏡 G'day! I'm your Aussie property expert. Try:\n\n` +
+                `• "Best suburbs under $700k in Sydney?"\n` +
+                `• "Where should I invest in Melbourne?"\n` +
+                `• "Tell me about Brisbane's rental market"`,
         clarification: true
       });
     }
 
-    // Logic flow 3: Check for vague input
-    let is_vague_input = false;
-    try {
-      const vaguenessCheck = await openai.chat.completions.create({
-        model: 'gpt-4',
-        temperature: 0,
-        messages: [
-          {
-            role: 'system',
-            content: `You're a classifier. Given a user message, classify it as either "vague" or "specific". A vague message is unclear, too short, or lacks actionable detail (e.g. "hi", "help", "i don't know", "what can you do"). Only return one word: "vague" or "specific".`,
-          },
-          {
-            role: 'user',
-            content: user_input,
-          },
-        ],
-      });
-
-      const classification = vaguenessCheck.choices[0].message.content?.toLowerCase().trim();
-      if (classification === 'vague') is_vague_input = true;
-    } catch (error) {
-      console.error('Vagueness check failed:', error);
-    }
-
-    // 3. 🛑 Handle vague input — but don't short-circuit if intent is clear
-    if (is_vague_input) {
-      const input = user_input.toLowerCase().trim();
-      const containsIntent =
-        ['invest', 'investing', 'live', 'living', 'rent', 'renting'].some((word) =>
-          input.includes(word)
-        ) || ['1', '2', '3'].includes(input);
-
-      if (is_vague_input && !containsIntent) {
-        clarificationCount += 1;
-
-        // New: More natural escalation
-        const responses = [
-          `No stress! Property can be confusing. Want to:\n` +
-          `1. Compare suburbs\n2. Get investment tips\n3. Find family-friendly areas\n` +
-          `Or just say what's on your mind!`,
-
-          `All good! Try one of these:\n` +
-          `• "Show growth suburbs in QLD"\n` +
-          `• "Where can I rent under $500?"\n` +
-          `• Or name any suburb`,
-
-          `Let's simplify:\n` +
-          `🏠 Buying? → Tell me your budget\n` +
-          `📈 Investing? → Preferred location\n` +
-          `🔍 Just looking? → Try "trendy suburbs"` 
-        ];
-
-        const responseIndex = Math.min(clarificationCount - 1, responses.length - 1);
-        
-        return NextResponse.json({
-          role: 'assistant',
-          clarification: true,
-          message: responses[responseIndex],
-          clarification_count: clarificationCount
-        });
-      }
-      // else: vague message *did* contain a useful keyword — continue as normal
-    }
-
-    // 4. 🔍 Detect user intent
+    // ======================
+    // 2. Property-Specific Logic
+    // ======================
+    // A. Intent Detection (GPT-4o)
     let detected_intent = null;
     try {
       const intentDetection = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4o',  // CHANGED TO GPT-4O
         temperature: 0,
         messages: [
           {
@@ -221,48 +171,7 @@ export async function POST(req: NextRequest) {
       console.error('Intent detection failed:', error);
     }
 
-    // New: Handle obvious non-property intents
-    if (!detected_intent && 
-        user_input.match(/weather|joke|fun fact|about you/i)) {
-      detected_intent = 'unsure';
-    }
-
-    const lowerInput = user_input.toLowerCase().trim();
-
-    if (!detected_intent) {
-      for (let i = messages.length - 2; i >= 0; i--) {
-        const content = messages[i]?.content?.toLowerCase() || '';
-        if (content.includes('invest')) {
-          detected_intent = 'invest';
-          break;
-        } else if (content.includes('live')) {
-          detected_intent = 'live';
-          break;
-        } else if (content.includes('rent')) {
-          detected_intent = 'rent';
-          break;
-        }
-      }
-    }
-    
-    if (clarificationCount >= 3 && !detected_intent) {
-      // Handle numbered replies
-      if (['1', 'one'].includes(lowerInput)) {
-        detected_intent = 'invest';
-      } else if (['2', 'two'].includes(lowerInput)) {
-        detected_intent = 'rent';
-      } else if (['3', 'three'].includes(lowerInput)) {
-        detected_intent = 'live';
-      } else if (
-        /rent/i.test(lowerInput) ||
-        /living|home|place|move/i.test(lowerInput) ||
-        /don'?t know|no idea|just browsing|new here|explore/i.test(lowerInput)
-      ) {
-        detected_intent = 'unsure';
-      }
-    }
-
-    // 3. 🔍 Detect suburb match (case-insensitive, multi-word, DB-driven)
+     // B. Suburb Matching (case-insensitive, multi-word, DB-driven)
     let possible_suburb: string | null = null;
     let matching_suburbs: { suburb: string; state: string }[] = [];
 
@@ -400,15 +309,16 @@ Example:
       `.trim();
     } else {
       prompt = `
-You are PropSignal AI, a property insights assistant for Australian suburbs.
-
-Provide helpful and clear answers on investment, lifestyle, or renting — and ask for clarification if the user's query is vague.
-      `.trim();
+      You're PropSignal AI, an Australian property expert. Respond to the user's query about:
+      ${detected_intent || 'general property advice'} 
+      ${possible_suburb ? `in ${possible_suburb}` : ''}.
+      Be concise, friendly, and include 1-2 key insights.
+    `.trim();
     }
 
     // 6. 🤖 Generate AI chat reply
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o',  // CHANGED TO GPT-4O
       temperature: 0.7,
       messages: [
         {
@@ -421,7 +331,7 @@ Provide helpful and clear answers on investment, lifestyle, or renting — and a
 
     const ai_response = completion.choices[0].message.content || '';
 
-    // 7. 💾 Log to Supabase
+    // 💾 Log to Supabase
     const { data, error } = await supabase
       .from('ai_chat_logs')
       .insert({
@@ -444,7 +354,7 @@ Provide helpful and clear answers on investment, lifestyle, or renting — and a
     });
   } catch (error) {
     console.error('❌ API /api/ai-chat failed:', error);
-    return new Response(JSON.stringify({ error: 'Sorry, something went wrong. Please try again later.' }), {
+    return new Response(JSON.stringify({ error: 'Sorry, something went wrong. Please try again.' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
