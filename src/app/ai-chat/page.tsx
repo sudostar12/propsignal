@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Check, Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { motion } from 'framer-motion';
+
 
 
 type Message = {
@@ -24,6 +25,13 @@ export default function AIChatPage() {
   const [input, setInput] = useState('');
   const [copiedUuid, setCopiedUuid] = useState<string | null>(null); // ✅ for tracking copied message
   const [isTyping, setIsTyping] = useState(false); //AI typing animation. 
+  // 🆕 Ref for auto-scroll
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   // 🆕 Feedback handler function
   const sendFeedback = async (uuid: string | undefined, feedback: 'positive' | 'negative') => {
     if (!uuid) return alert('No message to give feedback on.');
@@ -128,74 +136,76 @@ setMessages([
 </div>
 
         <div className="h-[400px] overflow-y-auto bg-gray-50 rounded-md p-4 text-sm mb-4 space-y-3 border">
-          {messages.map((m, i) => (
-            <div key={i} className="space-y-1">
-              {m.role === 'assistant' ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, ease: 'easeOut' }}
-                  className="text-left text-gray-700 whitespace-pre-wrap"
-                >
-                  {m.content}
-                </motion.div>
-              ) : (
-                <div className="text-right text-blue-700 whitespace-pre-wrap">
-                  {m.content}
-                </div>
-              )}
-              {/* Feedback and copy logic remains outside, shown only for assistant messages */}
-              {m.role === 'assistant' && m.uuid && i === messages.length - 1 && (
-                <div className="flex items-center gap-4 text-sm text-gray-500 pl-1 mt-1">
-                  {/* Copy and feedback buttons here... */}
-                  <button
-                    onClick={() => handleCopy(m.uuid!, m.content)}
-                    className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 transition"
-                  >
-                    {copiedUuid === m.uuid ? (
-                      <>
-                        <Check size={16} />
-                        <span>Copied</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={16} />
-                        <span>Copy</span>
-                      </>
-                    )}
-                  </button>
+        {messages.map((m, i) => (
+  <div key={i} className="space-y-1">
+    {m.role === 'assistant' ? (
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut', delay: 0.12 * i }}
+        className="flex justify-start"
+      >
+        <div className="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-sm max-w-xs md:max-w-md whitespace-pre-wrap">
+          {m.content}
+        </div>
+      </motion.div>
+    ) : (
+      <div className="flex justify-end">
+        <div className="bg-blue-100 text-blue-900 px-4 py-2 rounded-2xl shadow-sm max-w-xs md:max-w-md whitespace-pre-wrap">
+          {m.content}
+        </div>
+      </div>
+    )}
 
+    {/* Feedback + Copy Buttons only on latest assistant message */}
+    {m.role === 'assistant' && m.uuid && i === messages.length - 1 && (
+      <div className="flex items-center gap-4 text-sm text-gray-500 pl-1 mt-1">
+        <button
+          onClick={() => handleCopy(m.uuid!, m.content)}
+          className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 transition"
+        >
+          {copiedUuid === m.uuid ? (
+            <>
+              <Check size={16} />
+              <span>Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy size={16} />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
 
-                  {/* Divider */}
-                  <div className="h-4 w-px bg-gray-300" />
+        <div className="h-4 w-px bg-gray-300" />
 
-                  {/* ✅ Feedback Buttons – only show on latest assistant msg */}
-                  {i === messages.length - 1 ? (
-                    m.feedbackGiven ? (
-                      <span className="text-green-600">✅ Feedback recorded</span>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => sendFeedback(m.uuid!, 'positive')}
-                          className="p-1 rounded-full hover:bg-gray-100 transition"
-                          title="Helpful"
-                        >
-                          <ThumbsUp size={18} className="text-gray-600 hover:text-green-600" />
-                        </button>
-                        <button
-                          onClick={() => sendFeedback(m.uuid!, 'negative')}
-                          className="p-1 rounded-full hover:bg-gray-100 transition"
-                          title="Not helpful"
-                        >
-                          <ThumbsDown size={18} className="text-gray-600 hover:text-red-500" />
-                        </button>
-                      </div>
-                    )
-                  ) : null}
-                </div>
-              )}
-            </div>
-          ))}
+        {m.feedbackGiven ? (
+          <span className="text-green-600">✅ Feedback recorded</span>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => sendFeedback(m.uuid!, 'positive')}
+              className="p-1 rounded-full hover:bg-gray-100 transition"
+              title="Helpful"
+            >
+              <ThumbsUp size={18} className="text-gray-600 hover:text-green-600" />
+            </button>
+            <button
+              onClick={() => sendFeedback(m.uuid!, 'negative')}
+              className="p-1 rounded-full hover:bg-gray-100 transition"
+              title="Not helpful"
+            >
+              <ThumbsDown size={18} className="text-gray-600 hover:text-red-500" />
+            </button>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+))}
+
+            {/* 🆕 Scroll anchor to keep view on latest */}
+  <div ref={bottomRef} />
         </div>    
 
 {/* Message Input */}
@@ -211,7 +221,7 @@ setMessages([
         <input
           type="text"
           placeholder="e.g. Compare Box Hill and Doncaster for investment"
-          className="flex-1 p-2 border border-gray-300 rounded-md"
+          className="flex-1 px-4 py-2 rounded-full border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
