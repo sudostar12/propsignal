@@ -119,8 +119,6 @@ setMessages([
               >
                 {m.content}
               </div>
-              
-            <TestIcons /> {/* Temporary test icons - to be removed */}
 
               {/* 🆕 Show feedback buttons under the most recent assistant message */}
               {m.role === 'assistant' && i === messages.length - 1 && m.uuid && (
