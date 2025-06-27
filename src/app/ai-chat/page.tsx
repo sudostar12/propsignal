@@ -3,25 +3,12 @@
 import { useState } from 'react';
 import { Check, Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
 
-export function TestIcons() {
-  return (
-    <div className="flex gap-4 p-4 text-gray-700 text-sm">
-      <Check size={20} />
-      <Copy size={20} />
-      <ThumbsUp size={20} />
-      <ThumbsDown size={20} />
-    </div>
-  );
-}
-
-
 type Message = {
   role: 'user' | 'assistant';
   content: string;
   uuid?: string;
   feedbackGiven?: ('positive' | 'negative');
 };
-
 
 export default function AIChatPage() {
   const [clarificationCount, setClarificationCount] = useState<number>(0);
