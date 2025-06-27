@@ -1,14 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
+
+export function TestIcons() {
+  return (
+    <div className="flex gap-4 p-4 text-gray-700 text-sm">
+      <Check size={20} />
+      <Copy size={20} />
+      <ThumbsUp size={20} />
+      <ThumbsDown size={20} />
+    </div>
+  );
+}
 
 
 type Message = {
   role: 'user' | 'assistant';
   content: string;
   uuid?: string;
-  feedbackGiven?: boolean;
+  feedbackGiven?: 'positive' | 'negative';
 };
 
 
@@ -39,7 +50,7 @@ export default function AIChatPage() {
        // Update feedback state for that message
     setMessages(prev =>
       prev.map(msg =>
-        msg.uuid === uuid ? { ...msg, feedbackGiven: true } : msg
+        msg.uuid === uuid ? { ...msg, feedbackGiven: feedback } : msg
       )
     );
     } catch (error) {
@@ -108,10 +119,14 @@ setMessages([
               >
                 {m.content}
               </div>
+              
+            <TestIcons /> {/* Temporary test icons - to be removed */}
 
               {/* 🆕 Show feedback buttons under the most recent assistant message */}
               {m.role === 'assistant' && i === messages.length - 1 && m.uuid && (
          <div className="flex items-center gap-4 text-sm text-gray-500 pl-1 mt-1">
+                
+         {/* 🆕 Copy Button */}
          <button
            onClick={() => handleCopy(m.uuid!, m.content)}
            className="flex items-center hover:text-blue-600 transition"
@@ -127,19 +142,31 @@ setMessages([
            )}
          </button>
 
+         {/* Divider */}
          <div className="h-4 w-px bg-gray-300" />
 
-         {i === messages.length - 1 && (
-           <>
-             {m.feedbackGiven ? (
-               <span className="text-green-600">✅ Feedback recorded</span>
-             ) : (
-               <>
-                 <button onClick={() => sendFeedback(m.uuid!, 'positive')}>👍 Helpful</button>
-                 <button onClick={() => sendFeedback(m.uuid!, 'negative')}>👎 Not helpful</button>
-               </>
-             )}
-           </>
+         {/* 🆕 Feedback Buttons */}
+         {m.feedbackGiven ? (
+           <span className="text-green-600">✅ Feedback recorded</span>
+         ) : (
+           <div className="flex items-center gap-2">
+             <button
+               onClick={() => sendFeedback(m.uuid!, 'positive')}
+               className={`p-1 rounded-full transition ${
+                 m.feedbackGiven === 'positive' ? 'text-green-600 scale-110' : 'hover:text-gray-700'
+               }`}
+             >
+               <ThumbsUp size={18} />
+             </button>
+             <button
+               onClick={() => sendFeedback(m.uuid!, 'negative')}
+               className={`p-1 rounded-full transition ${
+                 m.feedbackGiven === 'negative' ? 'text-red-500 scale-110' : 'hover:text-gray-700'
+               }`}
+             >
+               <ThumbsDown size={18} />
+             </button>
+           </div>
          )}
        </div>
      )}
@@ -147,23 +174,23 @@ setMessages([
  ))}
 </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="e.g. Compare Box Hill and Doncaster for investment"
-            className="flex-1 p-2 border border-gray-300 rounded-md"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-          />
-          <button
-            onClick={sendMessage}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-          >
-            Send
-          </button>
-        </div>
-      </div>
-    </main>
-  );
+<div className="flex items-center gap-2">
+ <input
+   type="text"
+   placeholder="e.g. Compare Box Hill and Doncaster for investment"
+   className="flex-1 p-2 border border-gray-300 rounded-md"
+   value={input}
+   onChange={(e) => setInput(e.target.value)}
+   onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+ />
+ <button
+   onClick={sendMessage}
+   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+ >
+   Send
+ </button>
+</div>
+</div>
+</main>
+);
 }
