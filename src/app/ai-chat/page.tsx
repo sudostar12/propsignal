@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Check, Copy } from 'lucide-react';
+
 
 type Message = {
   role: 'user' | 'assistant';
@@ -20,7 +22,7 @@ export default function AIChatPage() {
     },
   ]);
   const [input, setInput] = useState('');
-
+  const [copiedUuid, setCopiedUuid] = useState<string | null>(null);
   // 🆕 Feedback handler function
   const sendFeedback = async (uuid: string | undefined, feedback: 'positive' | 'negative') => {
     if (!uuid) return alert('No message to give feedback on.');
@@ -44,7 +46,11 @@ export default function AIChatPage() {
       console.error('Feedback failed:', error);
     }
   };
-  
+  const handleCopy = (uuid: string, content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedUuid(uuid);
+    setTimeout(() => setCopiedUuid(null), 2000);
+  };
 
   async function sendMessage() {
     if (!input.trim()) return;
@@ -105,22 +111,41 @@ setMessages([
 
               {/* 🆕 Show feedback buttons under the most recent assistant message */}
               {m.role === 'assistant' && i === messages.length - 1 && m.uuid && (
-  <div className="flex items-center gap-4 text-sm text-gray-500 pl-1 mt-1">
-    {m.feedbackGiven ? (
-      <span className="text-green-600">✅ Feedback recorded</span>
-    ) : (
-      <>
-        <button onClick={() => sendFeedback(m.uuid!, 'positive')}>👍 Helpful</button>
-        <button onClick={() => sendFeedback(m.uuid!, 'negative')}>👎 Not helpful</button>
-      </>
-    )}
-  </div>
-)}
+         <div className="flex items-center gap-4 text-sm text-gray-500 pl-1 mt-1">
+         <button
+           onClick={() => handleCopy(m.uuid!, m.content)}
+           className="flex items-center hover:text-blue-600 transition"
+         >
+           {copiedUuid === m.uuid ? (
+             <>
+               <Check size={16} className="mr-1" /> Copied
+             </>
+           ) : (
+             <>
+               <Copy size={16} className="mr-1" /> Copy
+             </>
+           )}
+         </button>
 
+         <div className="h-4 w-px bg-gray-300" />
 
-            </div>
-          ))}
-        </div>
+         {i === messages.length - 1 && (
+           <>
+             {m.feedbackGiven ? (
+               <span className="text-green-600">✅ Feedback recorded</span>
+             ) : (
+               <>
+                 <button onClick={() => sendFeedback(m.uuid!, 'positive')}>👍 Helpful</button>
+                 <button onClick={() => sendFeedback(m.uuid!, 'negative')}>👎 Not helpful</button>
+               </>
+             )}
+           </>
+         )}
+       </div>
+     )}
+   </div>
+ ))}
+</div>
 
         <div className="flex items-center gap-2">
           <input

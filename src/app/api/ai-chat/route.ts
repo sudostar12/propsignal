@@ -137,13 +137,13 @@ ${memory_context}`.trim();
         suburb: possible_suburb,
         is_vague: isVague
       })
-      .select('uuid');
+      .select('uuid'); // 🆕 Needed to support client-side feedback tracking
 
     if (error) console.error('Logging failed:', error);
 
     return NextResponse.json({
       reply: ai_response,
-      uuid: data?.[0]?.uuid || null
+      uuid: data?.[0]?.uuid || null // 🆕 uuid is returned so thumbs/copy can work
     });
   } catch (error) {
     console.error('❌ API /api/ai-chat failed:', error);
