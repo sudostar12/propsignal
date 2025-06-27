@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
           const options = matching_suburbs.map(s => `${s.suburb}, ${s.state}`).join('\n• ');
           return NextResponse.json({
             role: 'assistant',
-            message: `Multiple matches found for "${matching_suburbs[0].suburb}". Which one?
-\n• ${options}\n\nAdd the state next time for a quicker response! 😉`,
+            message: `We found multiple locations for "${matching_suburbs[0].suburb}". Which one did you mean?
+\n• ${options}\n\nTip: Include the state next time (e.g. "Box Hill, VIC") for quicker response!`,
             clarification: true
           });
         }

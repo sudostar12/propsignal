@@ -125,7 +125,7 @@ export default function Home() {
         <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm text-left">
           <CheckCircle className="text-blue-600 w-6 h-6 mb-2" />
           <h3 className="text-lg font-semibold text-slate-800 mb-1">Real Data Sources</h3>
-          <p className="text-sm text-slate-600">Combines public data like ABS, rental trends, and council insights.</p>
+          <p className="text-sm text-slate-600">Combines public data, trends and market insights.</p>
         </div>
         <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm text-left">
           <Sparkles className="text-blue-600 w-6 h-6 mb-2" />
@@ -135,7 +135,7 @@ export default function Home() {
         <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm text-left">
           <Search className="text-blue-600 w-6 h-6 mb-2" />
           <h3 className="text-lg font-semibold text-slate-800 mb-1">Free & Instant</h3>
-          <p className="text-sm text-slate-600">No sign-up needed. Type a suburb and get answers in seconds.</p>
+          <p className="text-sm text-slate-600">Type a suburb and get answers in seconds.</p>
         </div>
       </div>
 
