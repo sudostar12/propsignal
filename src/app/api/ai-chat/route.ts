@@ -164,9 +164,18 @@ export async function POST(req: NextRequest) {
       });
 
       detected_intent = intentDetection.choices[0].message.content?.toLowerCase().trim();
-      if (!['invest', 'live', 'rent', 'unsure'].includes(detected_intent ?? '')) {
+      if (!['invest', 'live', 'rent', 'unsure', 'chat'].includes(detected_intent ?? '')) {
         detected_intent = null; // fallback in case GPT returns something unexpected
       }
+// Add this new condition before suburb detection (~line 220):
+if (detected_intent === 'chat') {
+  return NextResponse.json({
+    role: 'assistant',
+    message: `Hey there! 👋 I'm your Aussie property helper. Ask me about suburbs, investments, or rentals!`,
+    clarification: true
+  });
+}
+
     } catch (error) {
       console.error('Intent detection failed:', error);
     }
