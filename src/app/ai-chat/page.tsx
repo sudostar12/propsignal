@@ -114,20 +114,24 @@ setMessages([
          <div className="flex items-center gap-4 text-sm text-gray-500 pl-1 mt-1">
                 
          {/* 🆕 Copy Button */}
-         <button
-           onClick={() => handleCopy(m.uuid!, m.content)}
-           className="flex items-center hover:text-blue-600 transition"
-         >
-           {copiedUuid === m.uuid ? (
-             <>
-               <Check size={16} className="mr-1" /> Copied
-             </>
-           ) : (
-             <>
-               <Copy size={16} className="mr-1" /> Copy
-             </>
-           )}
-         </button>
+{/* 🆕 Copy Button */}
+<button
+  onClick={() => handleCopy(m.uuid!, m.content)}
+  className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 transition"
+>
+  {copiedUuid === m.uuid ? (
+    <>
+      <Check size={16} />
+      <span>Copied</span>
+    </>
+  ) : (
+    <>
+      <Copy size={16} />
+      <span>Copy</span>
+    </>
+  )}
+</button>
+
 
          {/* Divider */}
          <div className="h-4 w-px bg-gray-300" />
@@ -138,22 +142,20 @@ setMessages([
            <span className="text-green-600">✅ Feedback recorded</span>
          ) : (
            <div className="flex items-center gap-2">
-             <button
-               onClick={() => sendFeedback(m.uuid!, 'positive')}
-               className={`p-1 rounded-full transition ${
-                 m.feedbackGiven === 'positive' ? 'text-green-600 scale-110' : 'hover:text-gray-700'
-               }`}
-             >
-               <ThumbsUp size={18} />
-             </button>
-             <button
-               onClick={() => sendFeedback(m.uuid!, 'negative')}
-               className={`p-1 rounded-full transition ${
-                 m.feedbackGiven === 'negative' ? 'text-red-500 scale-110' : 'hover:text-gray-700'
-               }`}
-             >
-               <ThumbsDown size={18} />
-             </button>
+          <button
+    onClick={() => sendFeedback(m.uuid!, 'positive')}
+    className="p-1 rounded-full hover:bg-gray-100 transition"
+    title="Helpful"
+  >
+    <ThumbsUp size={18} className="text-gray-600 hover:text-green-600" />
+  </button>
+  <button
+    onClick={() => sendFeedback(m.uuid!, 'negative')}
+    className="p-1 rounded-full hover:bg-gray-100 transition"
+    title="Not helpful"
+  >
+    <ThumbsDown size={18} className="text-gray-600 hover:text-red-500" />
+  </button>
            </div>
          ) 
         ): null}
