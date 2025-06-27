@@ -12,12 +12,13 @@ export async function POST(req: Request) {
 
     const { uuid, feedback } = body;
 
-    // Validate input
-    if (!uuid || !['positive', 'negative'].includes(feedback)) {
+    // ✅ 1. Validate types and values
+    if (typeof uuid !== 'string' || !['positive', 'negative'].includes(feedback)) {
+      console.warn('⚠️ Invalid feedback payload:', body);
       return NextResponse.json({ success: false, error: 'Invalid feedback data' }, { status: 400 });
     }
 
-    // Update feedback in ai_chat_logs table
+     // ✅ 2. Update feedback in ai_chat_logs table
     const { error } = await supabase
       .from('ai_chat_logs')
       .update({
@@ -30,10 +31,21 @@ export async function POST(req: Request) {
       console.error('Supabase update failed:', error);
       return NextResponse.json({ success: false, error }, { status: 500 });
     }
-
+ // ✅ 3. Return success response
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('Feedback route error:', err);
     return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
   }
 }
+// ✅ 4. Optional: Add CORS handler (only if calling from other domains or mobile apps)
+export const OPTIONS = async () => {
+  return NextResponse.json({}, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    }
+  });
+};

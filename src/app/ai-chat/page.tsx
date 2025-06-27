@@ -7,7 +7,7 @@ type Message = {
   role: 'user' | 'assistant';
   content: string;
   uuid?: string;
-  feedbackGiven?: ('positive' | 'negative');
+  feedbackGiven?: 'positive' | 'negative';
 };
 
 export default function AIChatPage() {
@@ -20,7 +20,8 @@ export default function AIChatPage() {
     },
   ]);
   const [input, setInput] = useState('');
-  const [copiedUuid, setCopiedUuid] = useState<string | null>(null);
+  const [copiedUuid, setCopiedUuid] = useState<string | null>(null); // ✅ for tracking copied message
+  
   // 🆕 Feedback handler function
   const sendFeedback = async (uuid: string | undefined, feedback: 'positive' | 'negative') => {
     if (!uuid) return alert('No message to give feedback on.');
@@ -34,7 +35,7 @@ export default function AIChatPage() {
         },
       });
 
-       // Update feedback state for that message
+       // Update message feedback
     setMessages(prev =>
       prev.map(msg =>
         msg.uuid === uuid ? { ...msg, feedbackGiven: feedback as 'positive' | 'negative' } : msg
@@ -44,6 +45,7 @@ export default function AIChatPage() {
       console.error('Feedback failed:', error);
     }
   };
+    // ✅ Copy to clipboard handler
   const handleCopy = (uuid: string, content: string) => {
     navigator.clipboard.writeText(content);
     setCopiedUuid(uuid);
@@ -56,7 +58,7 @@ export default function AIChatPage() {
     // Append the new user message with correct type
     const updatedMessages: Message[] = [
       ...messages,
-      { role: 'user' as const, content: input }
+      { role: 'user', content: input }
     ];
     setMessages(updatedMessages);
 
@@ -107,8 +109,8 @@ setMessages([
                 {m.content}
               </div>
 
-              {/* 🆕 Show feedback buttons under the most recent assistant message */}
-              {m.role === 'assistant' && i === messages.length - 1 && m.uuid && (
+              {/* ✅ Show Copy & Feedback Buttons under latest assistant reply */}
+              {m.role === 'assistant' && m.uuid && (
          <div className="flex items-center gap-4 text-sm text-gray-500 pl-1 mt-1">
                 
          {/* 🆕 Copy Button */}
@@ -130,8 +132,9 @@ setMessages([
          {/* Divider */}
          <div className="h-4 w-px bg-gray-300" />
 
-         {/* 🆕 Feedback Buttons */}
-         {m.feedbackGiven ? (
+         {/* ✅ Feedback Buttons – only show on latest assistant msg */}
+         {i === messages.length - 1 ? (
+         m.feedbackGiven ? (
            <span className="text-green-600">✅ Feedback recorded</span>
          ) : (
            <div className="flex items-center gap-2">
@@ -152,13 +155,15 @@ setMessages([
                <ThumbsDown size={18} />
              </button>
            </div>
-         )}
+         ) 
+        ): null}
        </div>
      )}
    </div>
  ))}
 </div>
 
+ {/* Message Input */}
 <div className="flex items-center gap-2">
  <input
    type="text"
