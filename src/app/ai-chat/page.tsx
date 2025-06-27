@@ -19,7 +19,7 @@ type Message = {
   role: 'user' | 'assistant';
   content: string;
   uuid?: string;
-  feedbackGiven?: 'positive' | 'negative';
+  feedbackGiven?: ('positive' | 'negative');
 };
 
 
@@ -50,7 +50,7 @@ export default function AIChatPage() {
        // Update feedback state for that message
     setMessages(prev =>
       prev.map(msg =>
-        msg.uuid === uuid ? { ...msg, feedbackGiven: feedback } : msg
+        msg.uuid === uuid ? { ...msg, feedbackGiven: feedback as 'positive' | 'negative' } : msg
       )
     );
     } catch (error) {
