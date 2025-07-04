@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const { messages } = body;
 
     // Extract user input
-    const user_input = messages[messages.length - 1]?.content || '';
+    const userInput = messages[messages.length - 1]?.content || '';
 
     // Initialize state
     let detected_intent: string | null = null;
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
           },
           {
             role: 'user',
-            content: user_input
+            content: userInput
           }
         ]
       });
@@ -57,13 +57,13 @@ export async function POST(req: NextRequest) {
     // Suburb detection
     try {
       const { data: suburbList, error } = await supabase
-        .from('suburbs')
+        .from('lga_suburbs')
         .select('suburb, state');
 
       if (error) console.error('Suburb list fetch failed:', error);
 
       if (suburbList && suburbList.length > 0) {
-        const input = user_input.toLowerCase();
+        const input = userInput.toLowerCase();
         matching_suburbs = suburbList.filter(({ suburb }) =>
           new RegExp(`\\b${suburb.toLowerCase()}\\b`, 'i').test(input)
         );
@@ -130,27 +130,27 @@ ${memory_context}`.trim();
       ],
     });
 
-    const ai_response = completion.choices[0].message.content || '';
+    const AIResponse = completion.choices[0].message.content || '';
 
     // Determine if vague
     isVague = detected_intent === 'unsure' && !possible_suburb;
 
     // Log chat to Supabase
     const { data, error } = await supabase
-      .from('ai_chat_logs')
+      .from('logs_ai_chat')
       .insert({
-        user_input,
-        ai_response,
+        userInput,
+        AIResponse,
         intent: detected_intent,
         suburb: possible_suburb,
-        is_vague: isVague
+        isVague
       })
       .select('uuid'); // 🆕 Needed to support client-side feedback tracking
 
     if (error) console.error('Logging failed:', error);
 
     return NextResponse.json({
-      reply: ai_response,
+      reply: AIResponse,
       uuid: data?.[0]?.uuid || null // 🆕 uuid is returned so thumbs/copy can work
     });
   } catch (error) {
