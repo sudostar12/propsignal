@@ -137,7 +137,7 @@ ${memory_context}`.trim();
 
     // Log chat to Supabase
     const { data, error } = await supabase
-      .from('logs_ai_chat')
+      .from('log_ai_chat')
       .insert({
         userInput,
         AIResponse,

@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       .from('log_ai_chat')
       .update({
         feedback,
-        feedback_timestamp: new Date().toISOString()
+        feedbackTimestamp: new Date().toISOString()
       })
       .eq('uuid', uuid);
 

@@ -19,7 +19,7 @@ export default function Home() {
 
     const fetchSuggestions = async () => {
       const { data, error } = await supabase
-        .from('suburbs')
+        .from('lga_suburbs')
         .select('suburb')
         .ilike('suburb', `${suburb}%`)
         .order('suburb')
