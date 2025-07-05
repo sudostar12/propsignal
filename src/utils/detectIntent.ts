@@ -26,7 +26,7 @@ export async function detectUserIntent(userInput: string): Promise<'invest' | 'l
     });
 
     const raw_intent = intentDetection.choices[0].message.content?.toLowerCase().trim();
-    return ['invest', 'live', 'rent', 'unsure'].includes(raw_intent || '') ? raw_intent! as any : 'unsure';
+    return ['invest', 'live', 'rent', 'unsure'].includes(raw_intent || '') ? raw_intent! as 'invest' | 'live' | 'rent' | 'unsure' : 'unsure';
   } catch (error) {
     console.error('Intent detection failed:', error);
     return 'unsure';
