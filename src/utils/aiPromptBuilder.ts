@@ -1,4 +1,5 @@
 // utils/aiPromptBuilder.ts
+//used for suburb profile response structure
 
 interface SuburbPromptInput {
   suburb: string
