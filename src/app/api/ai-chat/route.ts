@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { supabase } from '@/lib/supabaseClient';
+import { detectUserIntent } from '@/utils/detectIntent';
+import { detectSuburb } from '@/utils/detectSuburb';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -17,72 +19,25 @@ export async function POST(req: NextRequest) {
     const userInput = messages[messages.length - 1]?.content || '';
 
     // Initialize state
-    let detected_intent: string | null = null;
-    let possible_suburb: string | null = null;
-    let matching_suburbs: { suburb: string; state: string }[] = [];
+    
+    
     let isVague = false;
 
-    // GPT-4o intent detection
-    try {
-      const intentDetection = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        temperature: 0,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a property assistant. Classify user intent as one of:
-            - "invest" (buy to generate returns)
-            - "live" (buy or rent for personal residence)
-            - "rent" (seeking to lease a home)
-            - "unsure" (user is confused, browsing, or unclear)
-            Return only one word from the list.`
-          },
-          {
-            role: 'user',
-            content: userInput
-          }
-        ]
-      });
+    // GPT-4o intent detection in utils/detectIntent.ts
+    
+    const detected_intent = await detectUserIntent(userInput);
 
-      const raw_intent = intentDetection.choices[0].message.content?.toLowerCase().trim();
-      detected_intent = ['invest', 'live', 'rent', 'unsure'].includes(raw_intent || '')
-        ? raw_intent!
-        : 'unsure';
-      
-    } catch (error) {
-      console.error('Intent detection failed:', error);
-      detected_intent = 'unsure';
-    }
+    // Suburb detection in utils/detectSuburbs.ts
 
-    // Suburb detection
-    try {
-      const { data: suburbList, error } = await supabase
-        .from('lga_suburbs')
-        .select('suburb, state');
-
-      if (error) console.error('Suburb list fetch failed:', error);
-
-      if (suburbList && suburbList.length > 0) {
-        const input = userInput.toLowerCase();
-        matching_suburbs = suburbList.filter(({ suburb }) =>
-          new RegExp(`\\b${suburb.toLowerCase()}\\b`, 'i').test(input)
-        );
-
-        if (matching_suburbs.length === 1) {
-          possible_suburb = matching_suburbs[0].suburb;
-        } else if (matching_suburbs.length > 1) {
-          const options = matching_suburbs.map(s => `${s.suburb}, ${s.state}`).join('\n• ');
-          return NextResponse.json({
-            role: 'assistant',
-            message: `We found multiple locations for "${matching_suburbs[0].suburb}". Which one did you mean?
-\n• ${options}\n\nTip: Include the state next time (e.g. "Box Hill, VIC") for quicker response!`,
-            clarification: true
-          });
-        }
-      }
-    } catch (e) {
-      console.error('Suburb match error:', e);
-    }
+    const { possible_suburb, matching_suburbs } = await detectSuburb(userInput);
+    if (matching_suburbs.length > 1 && !possible_suburb) {
+  const options = matching_suburbs.map(s => `${s.suburb}, ${s.state}`).join('\n• ');
+  return NextResponse.json({
+    role: 'assistant',
+    message: `We found multiple locations for "${matching_suburbs[0].suburb}". Which one did you mean?\n\n• ${options}`,
+    clarification: true,
+  });
+}
 
     // Memory-style context message
     let memory_context = '';
