@@ -20,10 +20,10 @@ export async function POST(req: Request) {
 
      // ✅ 2. Update feedback in ai_chat_logs table
     const { error } = await supabase
-      .from('ai_chat_logs')
+      .from('log_ai_chat')
       .update({
         feedback,
-        feedback_timestamp: new Date().toISOString()
+        feedbackTimestamp: new Date().toISOString()
       })
       .eq('uuid', uuid);
 
