@@ -65,11 +65,11 @@ export default function Home() {
 
       setAiInsight(result.message || 'No insight returned')
 
-      await supabase.from('insights').insert([
+      await supabase.from('log_insights').insert([
         {
-          suburb_name: suburb,
-          suburb_data: result.rawData,
-          ai_response: result.message,
+          suburb: suburb,
+          suburbData: result.rawData,
+          AIResponse: result.message,
           score: null,
           recommendation: null,
         },
