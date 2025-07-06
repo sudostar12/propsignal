@@ -1,13 +1,6 @@
 // utils/AIChatPrompt.ts
 
 // Type definitions for better type safety and debugging
-type HouseholdForecast = {
-  year?: number;
-  householdType?: string;
-  households?: number;
-  region?: string;
-};
-
 type HousePrice = {
   medianPrice?: number;
   year?: number;
@@ -19,7 +12,7 @@ type Rental = {
   medianRent?: number;
   year?: number;
   propertyType?: string;
-  bedroom?: string;
+  bedroom?: string; // 2BHK, 3BHK, 4BHK
   lga?: string;
 };
 
@@ -52,6 +45,13 @@ type Population = {
   SA2Code?: string;
 };
 
+type HouseholdForecast = {
+  year?: number; // 2021, 2026, 2031, or 2036
+  householdType?: string;
+  households?: number;
+  region?: string; // SA2 region name
+};
+
 type DataSets = {
   house_prices: HousePrice[];
   rentals: Rental[];
@@ -62,6 +62,7 @@ type DataSets = {
   household_forecast: HouseholdForecast[];
 };
 
+// CHANGE 1: Added housePrice, unitPrice, and propertyType fields for accurate median price tracking
 interface CalculatedMetrics {
   averagePrice: number | null;
   priceGrowth: number | null;
@@ -75,6 +76,9 @@ interface CalculatedMetrics {
   householdGrowthRate: number | null;
   totalHouseholdGrowth: number | null;
   familyDemandGrowth: number | null;
+  housePrice: number | null; // ADDED: Separate house price tracking
+  unitPrice: number | null;  // ADDED: Separate unit price tracking
+  propertyType: string;       // ADDED: Primary property type used
 }
 
 export function AIChatPrompt(
@@ -98,7 +102,6 @@ export function AIChatPrompt(
       projects: data.projects?.length || 0,
       demographics: data.demographics?.length || 0,
       population: data.population?.length || 0,
-      
     }
   });
 
@@ -159,10 +162,13 @@ ${formatDataForAI(data)}
 One compelling sentence about ${possible_suburb}'s investment or lifestyle appeal.
 
 ## 📈 Property Market Performance
-### Recent Price Trends
-- Current median price and recent growth patterns
+### Recent Price Trends (Focus on Last 3 Years)
+- **CRITICAL**: Use the EXACT median prices from the data - Houses: ${metrics.housePrice ? '$' + metrics.housePrice.toLocaleString() : 'N/A'}, Units: ${metrics.unitPrice ? '$' + metrics.unitPrice.toLocaleString() : 'N/A'}
+- These are the current ${new Date().getFullYear()} median prices - do NOT average or modify these figures
+- Calculate and show 3-year trend analysis using the priceGrowth metric: ${metrics.priceGrowth ? metrics.priceGrowth + '% average annual' : 'trend data unavailable'}
 - Compare to ${state || 'state'} averages where possible
-- Note any significant price movements or plateaus
+- Note any significant price movements, plateaus, or acceleration in recent years
+- Use longer-term data (2009-2023) only for historical context, not current predictions
 
 ### Rental Market Strength
 - Current rental rates and yield potential
@@ -196,8 +202,7 @@ One compelling sentence about ${possible_suburb}'s investment or lifestyle appea
 - Use the calculated metrics (householdGrowthRate from 2021-2036, familyDemandGrowth) to support your analysis
 - Provide specific insights: "With X% total household growth over 15 years and Y% family demand increase, this suggests Z for property investors"
 - Mention planned projects and government investments in context of these demographic forecast trends
-
-
+- Note that these are official VIC government forecasts using 5-year intervals, making them highly reliable for investment planning
 
 ## ⚠️ Risk Assessment
 ### Crime & Safety
@@ -270,13 +275,15 @@ function calculateDataMetrics(data: DataSets): CalculatedMetrics {
   
   console.log('[DEBUG] calculateDataMetrics - House price:', housePrice, 'Unit price:', unitPrice);
   
-  // Use house price as primary, fall back to unit price
+  // CHANGE 2: Modified to keep both house and unit prices separate, plus track property type
   let averagePrice = null;
   let propertyType = '';
+  
   if (housePrice && unitPrice) {
+    // If both exist, use house price as primary but keep both for summary
     averagePrice = housePrice;
     propertyType = 'house';
-    console.log('[DEBUG] calculateDataMetrics - Using house price as primary:', averagePrice);
+    console.log('[DEBUG] calculateDataMetrics - Using house price as primary:', averagePrice, 'Unit price available:', unitPrice);
   } else if (housePrice) {
     averagePrice = housePrice;
     propertyType = 'house';
@@ -351,7 +358,7 @@ function calculateDataMetrics(data: DataSets): CalculatedMetrics {
     : null;
   console.log('[DEBUG] calculateDataMetrics - Calculated rental yield:', rentalYield, '%');
 
- // Crime calculations - simplified for offenceCount, year, suburb only
+  // Crime calculations - simplified for offenceCount, year, suburb only
   const allCrime = data.crime?.filter(c => c.year && c.offenceCount) || [];
   console.log('[DEBUG] calculateDataMetrics - Raw crime data:', allCrime);
   console.log('[DEBUG] calculateDataMetrics - Crime data length:', allCrime.length);
@@ -492,6 +499,7 @@ function calculateDataMetrics(data: DataSets): CalculatedMetrics {
     }
   }
 
+  // CHANGE 3: Added housePrice, unitPrice, and propertyType to the returned metrics
   const metrics: CalculatedMetrics = {
     averagePrice,
     priceGrowth,
@@ -505,6 +513,10 @@ function calculateDataMetrics(data: DataSets): CalculatedMetrics {
     householdGrowthRate,
     totalHouseholdGrowth,
     familyDemandGrowth,
+    // ADDED: Separate price tracking for accurate display
+    housePrice: housePrice || null,
+    unitPrice: unitPrice || null,
+    propertyType,
   };
 
   console.log('[DEBUG] calculateDataMetrics - Results:', metrics);
@@ -512,22 +524,36 @@ function calculateDataMetrics(data: DataSets): CalculatedMetrics {
 }
 
 /**
- * Generate intelligent data summary
+ * Generate intelligent data summary with accurate pricing
  */
 function generateDataSummary(data: DataSets, metrics: CalculatedMetrics, suburb: string | null): string {
   console.log('[DEBUG] generateDataSummary - Creating summary for:', suburb);
+  console.log('[DEBUG] generateDataSummary - Using metrics:', metrics);
   
   let summary = '';
 
-  // Price summary
-  if (metrics.averagePrice) {
-    summary += `Median house price: $${metrics.averagePrice.toLocaleString()}`;
-    if (metrics.priceGrowth !== null) {
-      const trend = metrics.priceGrowth > 0 ? 'growth' : 'decline';
-      summary += ` (${Math.abs(metrics.priceGrowth)}% ${trend} recently)`;
-    }
-    summary += '. ';
+  // Get latest year data for accurate reporting
+  const allPrices = data.house_prices?.filter(p => p.year && p.medianPrice) || [];
+  const latestYear = Math.max(...allPrices.map(p => p.year || 0));
+  
+  console.log('[DEBUG] generateDataSummary - Latest year:', latestYear);
+  console.log('[DEBUG] generateDataSummary - House price:', metrics.housePrice, 'Unit price:', metrics.unitPrice);
+
+  // CHANGE 4: Modified to use exact database values instead of potentially incorrect calculations
+  // ACCURATE Price summary - show exactly what's in the database
+  if (metrics.housePrice && metrics.unitPrice) {
+    summary += `${latestYear} median prices: Houses $${metrics.housePrice.toLocaleString()}, Units $${metrics.unitPrice.toLocaleString()}`;
+  } else if (metrics.housePrice) {
+    summary += `${latestYear} median house price: $${metrics.housePrice.toLocaleString()}`;
+  } else if (metrics.unitPrice) {
+    summary += `${latestYear} median unit price: $${metrics.unitPrice.toLocaleString()}`;
   }
+  
+  if (metrics.priceGrowth !== null) {
+    const trend = metrics.priceGrowth > 0 ? 'growth' : 'decline';
+    summary += ` (${Math.abs(metrics.priceGrowth)}% average annual ${trend} over recent years)`;
+  }
+  if (summary) summary += '. ';
 
   // Rental summary
   if (metrics.averageRent) {
@@ -570,7 +596,7 @@ function generateDataSummary(data: DataSets, metrics: CalculatedMetrics, suburb:
     summary += `Family household demand ${direction} by ${Math.abs(metrics.familyDemandGrowth)}% through 2036. `;
   }
 
-  console.log('[DEBUG] generateDataSummary - Summary length:', summary.length);
+  console.log('[DEBUG] generateDataSummary - Final summary:', summary);
   return summary || 'Limited data available for comprehensive analysis.';
 }
 
@@ -594,8 +620,10 @@ function getToneGuidance(intent: string | null): string {
 function formatMetricsForAI(metrics: CalculatedMetrics): string {
   const items = [];
   
-  if (metrics.averagePrice) items.push(`Avg Price: $${metrics.averagePrice.toLocaleString()}`);
-  if (metrics.priceGrowth !== null) items.push(`Price Growth: ${metrics.priceGrowth}%`);
+  // CHANGE 5: Updated to show separate house and unit prices instead of averaged price
+  if (metrics.housePrice) items.push(`House Price: $${metrics.housePrice.toLocaleString()}`);
+  if (metrics.unitPrice) items.push(`Unit Price: $${metrics.unitPrice.toLocaleString()}`);
+  if (metrics.priceGrowth !== null) items.push(`Price Growth: ${metrics.priceGrowth}%/year`);
   if (metrics.averageRent) items.push(`Avg Rent: $${metrics.averageRent}/week`);
   if (metrics.rentalYield) items.push(`Rental Yield: ${metrics.rentalYield}%`);
   if (metrics.totalCrime) items.push(`Total Crime: ${metrics.totalCrime} offences`);
