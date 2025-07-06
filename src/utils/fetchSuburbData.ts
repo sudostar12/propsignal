@@ -410,7 +410,7 @@ export async function fetchHouseholdForecast(suburb: string) {
         console.log('[DEBUG] fetchHouseholdForecast - Available years:', years);
         console.log('[DEBUG] fetchHouseholdForecast - Available regions:', regions);
         console.log('[DEBUG] fetchHouseholdForecast - Available household types:', householdTypes);
-      } catch (logError) {
+      } catch {
         console.log('[DEBUG] fetchHouseholdForecast - Logging error, skipping detailed logs');
       }
     }
