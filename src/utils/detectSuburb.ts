@@ -12,7 +12,7 @@ export async function detectSuburb(userInput: string) {
     const { data: allSuburbs, error: suburbError } = await supabase
       .from('lga_suburbs')
       .select('suburb, lga, state')
-      .limit(1000); // Adjust based on your data size
+      .limit(2000); // Increase limit to get more suburbs
     
     if (suburbError) {
       console.error('[ERROR] detectSuburb - Failed to fetch suburbs:', suburbError);
@@ -22,30 +22,30 @@ export async function detectSuburb(userInput: string) {
     console.log('[DEBUG] detectSuburb - Loaded', allSuburbs?.length, 'suburbs from database');
     
     // Step 2: Create suburb list for AI prompt
-    const suburbList = allSuburbs?.map(s => `${s.suburb}, ${s.lga}, ${s.state}`).join('\n') || '';
+    const suburbList = allSuburbs?.map(s => s.suburb).join('\n') || '';
     
-    // Step 3: AI prompt for suburb detection
+    // Step 3: IMPROVED AI prompt for more accurate suburb detection
     const aiPrompt = `
-You are a suburb detection expert for Australian real estate. Your job is to identify the most likely suburb mentioned in user input, even with typos or informal language.
+You are a precise suburb detection expert for Australian real estate. Your job is to identify the EXACT suburb mentioned in user input.
 
 USER INPUT: "${userInput}"
 
-AVAILABLE SUBURBS:
+AVAILABLE SUBURBS (choose ONLY from this list):
 ${suburbList}
 
-INSTRUCTIONS:
-1. Analyze the user input for ANY mention of Australian suburbs, cities, or locations
-2. Handle common typos, abbreviations, and informal spellings
-3. Consider context clues (e.g., "I'm looking in the eastern suburbs" + "Bondi" = Bondi, NSW)
-4. Match against the provided suburb list
-5. Return ONLY the exact suburb name as it appears in the list, or "NO_SUBURB_FOUND" if no match
+CRITICAL INSTRUCTIONS:
+1. Find the EXACT suburb name that matches the user's input
+2. If user says "Box Hill", match ONLY "Box Hill" - NOT "Box Hill North", "Box Hill South", etc.
+3. Prioritize EXACT matches over partial matches
+4. Handle common typos but maintain suburb accuracy
+5. If multiple suburbs are similar, choose the most common/central one (e.g., "Box Hill" over "Box Hill North")
+6. Return ONLY the exact suburb name as it appears in the list, or "NO_SUBURB_FOUND" if no match
 
 EXAMPLES:
-- "What's the market like in Bondi?" → "Bondi"
-- "I'm interested in Melbourn CBD" → "Melbourne"
-- "Tell me about Sydeny" → "Sydney"
-- "Properties in Brissy" → "Brisbane"
-- "Looking at houses in Adelaid" → "Adelaide"
+- "Properties in Box Hill" → "Box Hill" (NOT "Box Hill North")
+- "What's the market like in Tarneit?" → "Tarneit"
+- "Tell me about Melbourne CBD" → "Melbourne" 
+- "Looking at houses in Sydeny" → "Sydney"
 
 RESPONSE FORMAT: Return only the suburb name, nothing else.
 `;
@@ -55,7 +55,7 @@ RESPONSE FORMAT: Return only the suburb name, nothing else.
     // Step 4: Call OpenAI for suburb detection
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
-      temperature: 0.1, // Low temperature for consistent results
+      temperature: 0.1, // Very low temperature for consistent results
       max_tokens: 50,
       messages: [
         { role: 'system', content: aiPrompt },
@@ -72,13 +72,26 @@ RESPONSE FORMAT: Return only the suburb name, nothing else.
       return { possible_suburb: null, confidence: 0 };
     }
     
-    // Step 6: Verify the suburb exists in our database
-    const matchedSuburb = allSuburbs?.find(s => 
+    // Step 6: ENHANCED verification - find exact match first, then fuzzy match
+    let matchedSuburb = allSuburbs?.find(s => 
       s.suburb.toLowerCase() === aiResponse.toLowerCase()
     );
     
+    // If no exact match, try case-insensitive partial match
+    if (!matchedSuburb) {
+      console.log('[DEBUG] detectSuburb - No exact match, trying fuzzy match for:', aiResponse);
+      matchedSuburb = allSuburbs?.find(s => 
+        s.suburb.toLowerCase().includes(aiResponse.toLowerCase()) ||
+        aiResponse.toLowerCase().includes(s.suburb.toLowerCase())
+      );
+    }
+    
     if (matchedSuburb) {
       console.log('[DEBUG] detectSuburb - Successfully matched suburb:', matchedSuburb.suburb);
+      console.log('[DEBUG] detectSuburb - User input was:', userInput);
+      console.log('[DEBUG] detectSuburb - AI detected:', aiResponse);
+      console.log('[DEBUG] detectSuburb - Final match:', matchedSuburb.suburb);
+      
       return { 
         possible_suburb: matchedSuburb.suburb, 
         confidence: 0.9,
