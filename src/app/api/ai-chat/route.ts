@@ -81,7 +81,6 @@ export async function POST(req: NextRequest) {
 
     // 4️⃣ Fetch all related datasets in parallel
     console.log('[DEBUG] Fetching datasets for suburb:', suburb);
-    // Temp log //
 
 
 // 🔍 DEBUG: Check what suburbs exist in each table
@@ -161,7 +160,7 @@ console.log('[DEBUG] Demographics table - sample data:', debugDemo, 'Error:', de
 
     // 7️⃣ Log the conversation
     console.log('[DEBUG] Logging conversation to database');
-    const { data: logData, error: logError } = await supabase
+    const { data: logData, error } = await supabase
       .from('log_ai_chat')
       .insert({
         userInput,
@@ -175,8 +174,8 @@ console.log('[DEBUG] Demographics table - sample data:', debugDemo, 'Error:', de
       })
       .select('uuid');
       
-    if (logError) {
-      console.error('[ERROR] Logging failed:', logError);
+    if (error) {
+      console.error('[ERROR] Logging failed:', error);
     } else {
       console.log('[DEBUG] Conversation logged successfully, UUID:', logData?.[0]?.uuid);
     }
