@@ -154,22 +154,29 @@ export async function fetchPopulation(suburb: string) {
       return { data: null, error };
     }
     
-    // Remove duplicates if any (same year/totalPersons combinations)
-  const uniqueData = data?.reduce((acc: any[], current) => {
-  const existing = acc.find(item => 
-    item.year === current.year && 
-    item.SA2Name === current.SA2Name
-  );
-  if (!existing) {
-    acc.push({
-      year: current.year,
-      totalPersons: current.totalPersons,
-      SA2Name: current.SA2Name,
-      SA2Code: current.SA2Code
-    });
-  }
-  return acc;
-}, []) || [];
+    // FIXED: Remove duplicates with proper typing instead of any[]
+    interface PopulationRecord {
+      year?: number;
+      totalPersons?: number;
+      SA2Name?: string;
+      SA2Code?: string;
+    }
+    
+    const uniqueData = data?.reduce((acc: PopulationRecord[], current: PopulationRecord) => {
+      const existing = acc.find(item => 
+        item.year === current.year && 
+        item.SA2Name === current.SA2Name
+      );
+      if (!existing) {
+        acc.push({
+          year: current.year,
+          totalPersons: current.totalPersons,
+          SA2Name: current.SA2Name,
+          SA2Code: current.SA2Code
+        });
+      }
+      return acc;
+    }, []) || [];
     
     console.log('[DEBUG] fetchPopulation - Final unique results:', uniqueData.length, 'records found');
     console.log('[DEBUG] fetchPopulation - Data:', uniqueData);
@@ -216,8 +223,8 @@ export async function fetchRentals(lga: string) {
       const houses = data.filter(r => r.propertyType?.toLowerCase().includes('house'));
       const units = data.filter(r => r.propertyType?.toLowerCase().includes('unit'));
       
-      // Get unique years using Array.from instead of spread operator
-      const years = Array.from(new Set(data.map(d => d.year).filter(Boolean))).sort();
+      // FIXED: Get unique years with proper typing
+      const years = Array.from(new Set(data.map((d: { year?: number }) => d.year).filter(Boolean))).sort();
       
       console.log('[DEBUG] fetchRentals - Results breakdown:');
       console.log('  - Houses (3BHK/4BHK):', houses.length, 'records');
@@ -318,9 +325,11 @@ export async function fetchCrime(suburb: string) {
     // Log sample data for debugging
     if (data && data.length > 0) {
       console.log('[DEBUG] fetchCrime - Sample record:', data[0]);
-      const years = Array.from(new Set(data.map(d => d.year).filter(Boolean))).sort();
+      // FIXED: Get unique years with proper typing
+      const years = Array.from(new Set(data.map((d: { year?: number }) => d.year).filter(Boolean))).sort();
       console.log('[DEBUG] fetchCrime - Years available:', years);
-      const totalOffences = data.reduce((sum, d) => sum + (d.offenceCount || 0), 0);
+      // FIXED: Reduce function with proper typing
+      const totalOffences = data.reduce((sum: number, d: { offenceCount?: number }) => sum + (d.offenceCount || 0), 0);
       console.log('[DEBUG] fetchCrime - Total offences across all years:', totalOffences);
     }
     
@@ -332,7 +341,6 @@ export async function fetchCrime(suburb: string) {
     return { data: null, error: err };
   }
 }
-
 
 export async function fetchHouseholdForecast(suburb: string) {
   console.log('[DEBUG] fetchHouseholdForecast - Searching for suburb/region:', suburb);
@@ -387,19 +395,25 @@ export async function fetchHouseholdForecast(suburb: string) {
     if (data && data.length > 0) {
       console.log('[DEBUG] fetchHouseholdForecast - Sample data:', data[0]);
       
- try {
-    // Ultra-safe approach with explicit typing
-    const years = Array.from(new Set(data.map(d => d?.year).filter(y => y != null)));
-    const regions = Array.from(new Set(data.map(d => d?.region).filter(r => r != null)));
-    const householdTypes = Array.from(new Set(data.map(d => d?.householdType).filter(h => h != null)));
-    
-    console.log('[DEBUG] fetchHouseholdForecast - Available years:', years);
-    console.log('[DEBUG] fetchHouseholdForecast - Available regions:', regions);
-    console.log('[DEBUG] fetchHouseholdForecast - Available household types:', householdTypes);
-  } catch (logError) {
-    console.log('[DEBUG] fetchHouseholdForecast - Logging error, skipping detailed logs');
-  }
-}
+      try {
+        // FIXED: Ultra-safe approach with explicit typing
+        interface HouseholdRecord {
+          year?: number;
+          region?: string;
+          householdType?: string;
+        }
+        
+        const years = Array.from(new Set(data.map((d: HouseholdRecord) => d?.year).filter(y => y != null)));
+        const regions = Array.from(new Set(data.map((d: HouseholdRecord) => d?.region).filter(r => r != null)));
+        const householdTypes = Array.from(new Set(data.map((d: HouseholdRecord) => d?.householdType).filter(h => h != null)));
+        
+        console.log('[DEBUG] fetchHouseholdForecast - Available years:', years);
+        console.log('[DEBUG] fetchHouseholdForecast - Available regions:', regions);
+        console.log('[DEBUG] fetchHouseholdForecast - Available household types:', householdTypes);
+      } catch (logError) {
+        console.log('[DEBUG] fetchHouseholdForecast - Logging error, skipping detailed logs');
+      }
+    }
     
     return { data, error: null };
     
