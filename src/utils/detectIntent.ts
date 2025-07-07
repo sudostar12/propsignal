@@ -1,6 +1,12 @@
 import OpenAI from 'openai';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+export type ChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
+
 export type UserIntent = 'invest' | 'live' | 'rent' | 'suburb' | 'help' | 'unsure';
 
 export async function detectUserIntent(userInput: string): Promise<UserIntent> {
@@ -39,7 +45,7 @@ Return only one word exactly as listed above. No explanation.`
 }
 
 // ✅ 
-export async function generateGeneralReply(messages: any[]): Promise<string> {
+export async function generateGeneralReply(messages: ChatMessage[], detectedIntent:string): Promise<string> {
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -49,11 +55,12 @@ export async function generateGeneralReply(messages: any[]): Promise<string> {
           role: 'system',
           content: `You are a friendly, helpful Australian property AI assistant. You should respond naturally and conversationally based on the user's messages so far. 
           
-If they ask about what you can do, explain your capabilities. 
-If they ask about investing, explain investment insights. 
-If they ask about living or lifestyle, give lifestyle advice. 
-If they ask about renting, talk about rental considerations. 
-If they switch context, respond contextually — do not repeat yourself exactly.`
+          Current user intent: ${detectedIntent}  
+          If they ask about what you can do, explain your capabilities. 
+          If they ask about investing, explain investment insights. 
+          If they ask about living or lifestyle, give lifestyle advice. 
+          If they ask about renting, talk about rental considerations. 
+          If they switch context, respond contextually — do not repeat yourself exactly.`
         },
         ...messages
       ]
