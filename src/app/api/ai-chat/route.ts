@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+//import OpenAI from 'openai';
 import { analyzeUserQuestion } from '@/utils/questionAnalyzer';
-import { updateContext, getContext, resetContext } from '@/utils/contextManager';
+import { updateContext, getContext } from '@/utils/contextManager';
 import { answerMedianPrice, answerCrimeStats, answerRentalYield } from '@/utils/answerFunctions';
-import { detectUserIntent, generateGeneralReply } from '@/utils/detectIntent';
+import { generateGeneralReply } from '@/utils/detectIntent';
 import { detectSuburb } from '@/utils/detectSuburb';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+//const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,7 +39,7 @@ if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis
     } else if (questionAnalysis.topic === "yield") {
       result = await answerRentalYield(suburb);
     } else {
-      result = `I don't yet support comparing "${questionAnalysis.topic}" data.`;
+      result = `I don't yet support "${questionAnalysis.topic}" data.`;
     }
 
     results.push(`**${suburb}:** ${result}`);
@@ -68,7 +68,7 @@ if (questionAnalysis.state && (!questionAnalysis.targetAreas || questionAnalysis
 }
 
     let area = questionAnalysis.targetArea;
-    let topic = questionAnalysis.topic;
+    const topic = questionAnalysis.topic;
 
     // STEP 2️⃣ — Detect suburb if not already set
     if (!area) {
