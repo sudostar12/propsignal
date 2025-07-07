@@ -1,198 +1,122 @@
-// src/app/api/ai-chat/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { supabase } from '@/lib/supabaseClient';
-import { detectUserIntent } from '@/utils/detectIntent';
+import { analyzeUserQuestion } from '@/utils/questionAnalyzer';
+import { updateContext, getContext, resetContext } from '@/utils/contextManager';
+import { answerMedianPrice, answerCrimeStats, answerRentalYield } from '@/utils/answerFunctions';
+import { detectUserIntent, generateGeneralReply } from '@/utils/detectIntent';
 import { detectSuburb } from '@/utils/detectSuburb';
-import { AIChatPrompt } from '@/utils/AIChatPrompt';
-import {
-  fetchMedianPrice,
-  fetchDemographics,
-  fetchPopulation,
-  fetchRentals,
-  fetchProjects,
-  fetchCrime,
-  fetchHouseholdForecast,
-} from '@/utils/fetchSuburbData';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// Simple health‐check
-export async function GET() {
-  return NextResponse.json({ ok: true, msg: 'API is alive' });
-}
-
 export async function POST(req: NextRequest) {
   try {
+    console.log('\n[DEBUG] ======== NEW REQUEST ========');
+
     const { messages } = await req.json();
     const userInput = messages?.[messages.length - 1]?.content || '';
-    console.log('[DEBUG] Raw user input:', userInput);
+    console.log('[DEBUG] User input:', userInput);
 
-    // 1️⃣ Intent detection
-    const detected_intent = await detectUserIntent(userInput);
-    console.log('[DEBUG] Detected intent:', detected_intent);
+    // STEP 1️⃣ — Analyze user question
+    const questionAnalysis = await analyzeUserQuestion(userInput);
+    console.log('[DEBUG] Question analysis:', questionAnalysis);
 
-    // 2️⃣ AI-powered suburb detection with fuzzy matching
-    const suburbDetection = await detectSuburb(userInput);
-    console.log('[DEBUG] AI suburb detection result:', suburbDetection);
-    
-    if (!suburbDetection.possible_suburb) {
-      console.warn('[WARN] No suburb detected from input');
-      return NextResponse.json(
-        { error: 'I couldn\'t identify a specific suburb from your message. Could you please mention the suburb or area you\'re interested in?' },
-        { status: 400 }
-      );
-    }
-    
-    const suburb = suburbDetection.possible_suburb;
-    const lga = suburbDetection.lga;
-    const state = suburbDetection.state;
-    
-    console.log('[DEBUG] Using detected suburb:', suburb, 'LGA:', lga, 'State:', state);
+    // ============================
+    // [DEBUG-S5.1] MULTI-SUBURB COMPARISON HANDLING
+    // ============================
 
-    // 3️⃣ Double-check suburb exists in database (redundant but safe)
-    const { data: suburbVerification, error: verificationError } = await supabase
-      .from('lga_suburbs')
-      .select('lga, state')
-      .eq('suburb', suburb)
-      .limit(1);
+if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis.targetAreas.length > 1) {
+  console.log('[DEBUG-S5.1] Multi-suburb comparison requested:', questionAnalysis.targetAreas);
 
-    if (verificationError) {
-      console.error('[ERROR] Suburb verification error:', verificationError);
-      return NextResponse.json(
-        { error: 'Error verifying suburb data.' },
-        { status: 500 }
-      );
-    }
+  const results: string[] = [];
 
-    if (!suburbVerification || suburbVerification.length === 0) {
-      console.error('[ERROR] Suburb not found in database after AI detection:', suburb);
-      return NextResponse.json(
-        { error: 'I detected a suburb but couldn\'t find it in our database. Please try again with a different suburb.' },
-        { status: 404 }
-      );
-    }
+  for (const suburb of questionAnalysis.targetAreas) {
+    let result = "";
 
-    // Use the verified data
-    const finalLga = suburbVerification[0].lga;
-    const finalState = suburbVerification[0].state;
-    console.log('[DEBUG] Final verified suburb data - LGA:', finalLga, 'State:', finalState);
-
-    // 4️⃣ Fetch all related datasets in parallel
-    console.log('[DEBUG] Fetching datasets for suburb:', suburb);
-
-
-// 🔍 DEBUG: Check what suburbs exist in each table
-console.log('[DEBUG] Checking database for suburb matches...');
-
-// Check median_price table
-const { data: debugPrices, error: debugPricesError } = await supabase
-  .from('median_price') // Replace with your actual table name
-  .select('*')
-  .ilike('suburb', `%${suburb}%`) // Case-insensitive partial match
-  .limit(5);
-console.log('[DEBUG] Median price table - sample data:', debugPrices, 'Error:', debugPricesError);
-
-// Check demographics table  
-const { data: debugDemo, error: debugDemoError } = await supabase
-  .from('sa2_demographics') // Replace with your actual table name
-  .select('*')
-  .ilike('SA2Name', `%${suburb}%`)
-  .limit(5);
-console.log('[DEBUG] Demographics table - sample data:', debugDemo, 'Error:', debugDemoError);
-
-    const [
-      priceData,
-      demographics,
-      population,
-      rentals,
-      projects,
-      crime,
-      householdForecast,
-    ] = await Promise.all([
-      fetchMedianPrice(suburb),
-      fetchDemographics(suburb),
-      fetchPopulation(suburb),
-      fetchRentals(finalLga),
-      fetchProjects(finalLga),
-      fetchCrime(suburb),
-      fetchHouseholdForecast(suburb)
-    ]);
-    
-    console.log('[DEBUG] Datasets fetched successfully:', {
-      priceCount: priceData.data?.length || 0,
-      demoCount: demographics.data?.length || 0,
-      popCount: population.data?.length || 0,
-      rentCount: rentals.data?.length || 0,
-      projCount: projects.data?.length || 0,
-      crimeCount: crime.data?.length || 0,
-      forecastCount: householdForecast.data?.length || 0,
-    });
-
-    // ADD THIS DEBUG CODE TO SEE WHAT'S IN CRIME DATA
-    console.log('[DEBUG] Raw crime data from fetch:', crime.data);
-    console.log('[DEBUG] Crime data type:', typeof crime.data);
-    console.log('[DEBUG] Is crime data array?', Array.isArray(crime.data)); 
-
-    // 5️⃣ Build AI prompt
-    const prompt = AIChatPrompt(suburb, detected_intent, {
-      house_prices: priceData.data ?? [],
-      demographics: demographics.data ?? [],
-      population: population.data ?? [],
-      rentals: rentals.data ?? [],
-      projects: projects.data ?? [],
-      crime: crime.data ?? [],
-      household_forecast: householdForecast.data ?? [],
-    }, finalLga, finalState);
-    console.log('[DEBUG] AI prompt length:', prompt.length, 'characters');
-
-    // 6️⃣ Call OpenAI for final response
-    console.log('[DEBUG] Calling OpenAI for final response');
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      temperature: 0.7,
-      messages: [{ role: 'system', content: prompt }, ...messages],
-    });
-    
-    const AIResponse = completion.choices[0]?.message?.content || '';
-    console.log('[DEBUG] AI response generated, length:', AIResponse.length, 'characters');
-
-    // 7️⃣ Log the conversation
-    console.log('[DEBUG] Logging conversation to database');
-    const { data: logData, error } = await supabase
-      .from('log_ai_chat')
-      .insert({
-        userInput,
-        AIResponse,
-        intent: detected_intent,
-        suburb,
-        isVague: detected_intent === 'unsure',
-        confidence: suburbDetection.confidence,
-        lga: finalLga,
-        state: finalState,
-      })
-      .select('uuid');
-      
-    if (error) {
-      console.error('[ERROR] Logging failed:', error);
+    if (questionAnalysis.topic === "crime") {
+      result = await answerCrimeStats(suburb);
+    } else if (questionAnalysis.topic === "price") {
+      result = await answerMedianPrice(suburb);
+    } else if (questionAnalysis.topic === "yield") {
+      result = await answerRentalYield(suburb);
     } else {
-      console.log('[DEBUG] Conversation logged successfully, UUID:', logData?.[0]?.uuid);
+      result = `I don't yet support comparing "${questionAnalysis.topic}" data.`;
     }
 
-    // 8️⃣ Return to client
-    return NextResponse.json({
-      reply: AIResponse,
-      uuid: logData?.[0]?.uuid ?? null,
-      detectedSuburb: suburb,
-      confidence: suburbDetection.confidence,
-    });
-    
+    results.push(`**${suburb}:** ${result}`);
+  }
+
+  const compareReply = `Here's a side-by-side comparison:\n\n${results.join("\n\n")}`;
+
+  return NextResponse.json({
+    reply: compareReply,
+    comparedSuburbs: questionAnalysis.targetAreas
+  });
+}
+// ============================
+// [DEBUG-S5.2] STATE-LEVEL QUERY HANDLING
+// ============================
+
+if (questionAnalysis.state && (!questionAnalysis.targetAreas || questionAnalysis.targetAreas.length === 0)) {
+  console.log('[DEBUG-S5.2] State-level query detected:', questionAnalysis.state);
+
+  const stateReply = `You're asking about ${questionAnalysis.topic} across all of ${questionAnalysis.state}. Right now, I specialize in suburb-level data. Would you like me to suggest a few suburbs in ${questionAnalysis.state} to explore further?`;
+
+  return NextResponse.json({ 
+    reply: stateReply,
+    state: questionAnalysis.state
+  });
+}
+
+    let area = questionAnalysis.targetArea;
+    let topic = questionAnalysis.topic;
+
+    // STEP 2️⃣ — Detect suburb if not already set
+    if (!area) {
+      const suburbDetection = await detectSuburb(userInput);
+      if (suburbDetection.possible_suburb) {
+        area = suburbDetection.possible_suburb;
+        console.log('[DEBUG] Suburb auto-detected:', area);
+      }
+    }
+
+    // Update context
+    if (area) {
+      updateContext({ suburb: area });
+    }
+    const context = getContext();
+    console.log('[DEBUG] Current context:', context);
+
+    let reply = '';
+
+    // STEP 3️⃣ — Decide what to answer based on topic
+    if (topic === 'price' && area) {
+      reply = await answerMedianPrice(area);
+    } else if (topic === 'crime' && area) {
+      reply = await answerCrimeStats(area);
+    } else if (topic === 'yield' && area) {
+      reply = await answerRentalYield(area);
+    } else if (topic === 'profile' && area) {
+      reply = `Great! You requested a detailed profile for ${area}. Right now, we haven't implemented full profile in this new flow yet, but it's coming soon! Meanwhile, feel free to ask about prices, crime, rental yield, or other specific insights.`;
+    } else if (topic === 'compare') {
+      reply = `Comparison queries are coming soon! You can meanwhile ask individual suburb questions.`;
+    } else {
+      // Default: general guidance or fallback
+      reply = await generateGeneralReply(messages, topic);
+    }
+
+    console.log('[DEBUG] Final AI reply:', reply);
+
+    return NextResponse.json({ reply, context });
   } catch (err) {
-    console.error('[ERROR] /api/ai-chat crashed with error:', err);
+    console.error('[ERROR] /api/ai-chat crashed:', err);
     return NextResponse.json(
       { error: 'Sorry, something went wrong. Please try again.' },
       { status: 500 }
     );
   }
+}
+
+// Health check
+export async function GET() {
+  return NextResponse.json({ ok: true, msg: 'PropSignal AI API is running 🚀' });
 }
