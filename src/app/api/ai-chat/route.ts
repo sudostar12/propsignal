@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 //import OpenAI from 'openai';
 import { analyzeUserQuestion } from '@/utils/questionAnalyzer';
 import { updateContext, getContext } from '@/utils/contextManager';
-import { answerMedianPrice, answerCrimeStats, answerRentalYield } from '@/utils/answerFunctions';
+//import { answerMedianPrice, answerCrimeStats, answerRentalYield } from '@/utils/answerFunctions';  - DELETE this entry after testing 08/7/2025
+import { answerCrimeStats } from "@/utils/answers/crimeAnswer";
+import { answerMedianPrice } from "@/utils/answers/medianPriceAnswer";
+import { answerRentalYield } from "@/utils/answers/rentalYieldAnswer";
+
 import { generateGeneralReply } from '@/utils/detectIntent';
 import { detectSuburb } from '@/utils/detectSuburb';
 
