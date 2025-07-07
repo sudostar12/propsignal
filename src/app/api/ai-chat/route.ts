@@ -24,11 +24,11 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG] Question analysis:', questionAnalysis);
 
     let area = questionAnalysis.targetArea;
-    let topic = questionAnalysis.topic;
+    const topic = questionAnalysis.topic;
     let finalReply = '';
     let isVague = false;
-    let lga = null;
-    let state = null;
+    const lga = null;
+    const state = null;
 
     // ============================
     // [DEBUG-S5.1] MULTI-SUBURB COMPARISON HANDLING
