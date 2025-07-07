@@ -38,8 +38,8 @@ Return only one word exactly as listed above. No explanation.`
   }
 }
 
-// ✅ Move this outside and export it separately
-export async function generateGeneralReply(messages: any[], detectedIntent: string): Promise<string> {
+// ✅ 
+export async function generateGeneralReply(messages: any[]): Promise<string> {
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',

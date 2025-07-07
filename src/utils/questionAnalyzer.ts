@@ -9,7 +9,6 @@ export type AnalyzedQuestion = {
 };
 
 export async function analyzeUserQuestion(userInput: string) {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
   const analysisPrompt = `
 You are PropSignal AI's query analyzer. Extract user question details and return JSON ONLY.

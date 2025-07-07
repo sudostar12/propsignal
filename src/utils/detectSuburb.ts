@@ -2,7 +2,7 @@
 
 import OpenAI from 'openai';
 import { supabase } from '@/lib/supabaseClient';
-import { detectUserIntent, generateGeneralReply } from '@/utils/detectIntent';
+import { detectUserIntent } from '@/utils/detectIntent';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -228,7 +228,7 @@ function tryFuzzyMatching(normalizedExtracted: string, originalExtracted: string
     return distA - distB;
   });
   
-  const [bestMatchName, bestMatchSuburbs] = sortedMatches[0];
+  const [/*bestMatchName*/, bestMatchSuburbs] = sortedMatches[0];
   
   if (bestMatchSuburbs.length > 1) {
     // Multiple states for the same suburb

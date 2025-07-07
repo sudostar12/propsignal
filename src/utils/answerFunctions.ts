@@ -1,6 +1,6 @@
 // src/utils/answerFunctions.ts
 
-import { fetchMedianPrice, fetchCrime, fetchRentals } from '@/utils/fetchSuburbData';
+//import { fetchMedianPrice, fetchCrime, fetchRentals } from '@/utils/fetchSuburbData';
 import { supabase } from '@/lib/supabaseClient';
 
 
