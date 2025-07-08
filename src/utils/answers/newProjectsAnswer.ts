@@ -2,6 +2,11 @@
 
 import { fetchProjects } from "@/utils/fetchSuburbData";
 
+export interface ProjectRecord {
+  project_name: string;
+  status: string;
+}
+
 // [DEBUG-NP1] New projects answer function
 export async function answerNewProjects(suburb: string): Promise<string> {
   console.log("[DEBUG-NP1] Fetching projects for:", suburb);

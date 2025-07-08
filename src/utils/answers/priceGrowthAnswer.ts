@@ -2,6 +2,12 @@
 
 import { fetchMedianPrice } from "@/utils/fetchSuburbData";
 
+export interface PriceRecord {
+  year: number;
+  median_price: number;
+}
+
+
 // [DEBUG-PG1] Price growth answer function
 export async function answerPriceGrowth(suburb: string, years: number = 5): Promise<string> {
   console.log("[DEBUG-PG1] Fetching median price data for:", suburb);
