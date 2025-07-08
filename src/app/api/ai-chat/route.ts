@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
     const topic = questionAnalysis.topic;
     let finalReply = '';
     let isVague = false;
-    const lga = null;
-    const state = null;
+    let lga = null;
+    let state = null;
 
     // ============================
     // [DEBUG-S5.1] MULTI-SUBURB COMPARISON HANDLING
@@ -70,6 +70,24 @@ else {
           console.log('[DEBUG] Suburb auto-detected:', area);
         }
       }
+
+if (area) {
+  console.log('[DEBUG] Looking up LGA and State for suburb:', area);
+  const { data: suburbInfo, error: suburbError } = await supabase
+    .from('lga_suburbs')
+    .select('lga, state')
+    .eq('suburb', area)
+    .single();
+
+  if (suburbError) {
+    console.error('[ERROR] Failed to lookup suburb details:', suburbError);
+  } else if (suburbInfo) {
+    lga = suburbInfo.lga;
+    state = suburbInfo.state;
+    console.log('[DEBUG] Found LGA:', lga, 'State:', state);
+  }
+}
+
 
       if (area) {
         updateContext({ suburb: area });
