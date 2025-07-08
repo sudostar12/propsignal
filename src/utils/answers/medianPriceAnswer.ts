@@ -10,7 +10,7 @@ export async function answerMedianPrice(suburb: string) {
   console.log('[DEBUG-MP1.1] Fetching latest price data for suburb:', suburb);
 
   const { data, error } = await supabase
-    .from("median_prices")
+    .from("median_price")
     .select("*")
     .eq("suburb", suburb)
     .order("year", { ascending: false })
