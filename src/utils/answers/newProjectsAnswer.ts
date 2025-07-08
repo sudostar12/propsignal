@@ -12,7 +12,7 @@ export async function answerNewProjects(suburb: string): Promise<string> {
   console.log("[DEBUG-NP1] Fetching projects for:", suburb);
 
   const dataResult = await fetchProjects(suburb);
-  const projects = dataResult.data || [];
+  const projects: ProjectRecord[] = dataResult.data ?? [];
 
   console.log("[DEBUG-NP2] Total projects found:", projects.length);
 
@@ -21,13 +21,15 @@ export async function answerNewProjects(suburb: string): Promise<string> {
   }
 
   // Example: count active projects
-  const activeProjects = projects.filter((p: any) => p.status === "active" || p.status === "planned");
+  const activeProjects: ProjectRecord[] = projects.filter(
+    (p: ProjectRecord) => p.status === "active" || p.status === "planned"
+  );
 
   if (activeProjects.length === 0) {
     return `There are no major upcoming projects currently reported for ${suburb}.`;
   }
 
-  const majorExamples = activeProjects.slice(0, 2).map((p: any) => p.project_name).join(", ");
+  const majorExamples = activeProjects.slice(0, 2).map((p) => p.project_name).join(", ");
 
   return `I found ${activeProjects.length} active or planned projects in ${suburb}. For example: ${majorExamples}. Let me know if you'd like to see more details on each project.`;
 }

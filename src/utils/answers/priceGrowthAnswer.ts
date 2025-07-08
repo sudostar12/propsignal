@@ -13,7 +13,7 @@ export async function answerPriceGrowth(suburb: string, years: number = 5): Prom
   console.log("[DEBUG-PG1] Fetching median price data for:", suburb);
 
   const dataResult = await fetchMedianPrice(suburb);
-  const prices = dataResult.data || [];
+  const prices: PriceRecord[] = dataResult.data ?? [];
 
   // [DEBUG-PG2] Check dataset
   console.log("[DEBUG-PG2] Median price dataset length:", prices.length);
@@ -23,16 +23,16 @@ export async function answerPriceGrowth(suburb: string, years: number = 5): Prom
   }
 
   // Sort prices by year if you have "year" column, adjust as needed
-  const sorted = prices
-    .filter((p: any) => p.year)
-    .sort((a: any, b: any) => a.year - b.year);
+  const sorted: PriceRecord[] = prices
+    .filter((p: PriceRecord) => p.year)
+    .sort((a: PriceRecord, b: PriceRecord) => a.year - b.year);
 
   // Find oldest and most recent price within N years
   const currentYear = new Date().getFullYear();
   const startYear = currentYear - years;
 
-  const startRecord = sorted.find((p: any) => p.year === startYear);
-  const latestRecord = sorted.find((p: any) => p.year === currentYear - 1 || p.year === currentYear);
+  const startRecord = sorted.find((p: PriceRecord) => p.year === startYear);
+  const latestRecord = sorted.find((p: PriceRecord) => p.year === currentYear - 1 || p.year === currentYear);
 
   if (!startRecord || !latestRecord) {
     return `I couldn't find enough data to calculate ${years}-year price growth for ${suburb}.`;
