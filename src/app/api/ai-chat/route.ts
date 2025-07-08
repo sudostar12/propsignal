@@ -17,15 +17,15 @@ import { getSuggestionsForTopic } from '@/utils/suggestions';
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('\n[DEBUG] ======== NEW REQUEST ========');
+    console.log('\n[DEBUG route.ts] ======== NEW REQUEST ========');
 
     const { messages } = await req.json();
     const userInput = messages?.[messages.length - 1]?.content || '';
-    console.log('[DEBUG] User input:', userInput);
+    console.log('[DEBUG route.ts] User input:', userInput);
 
     // STEP 1️⃣ — Analyze user question
     const questionAnalysis = await analyzeUserQuestion(userInput);
-    console.log('[DEBUG] Question analysis:', questionAnalysis);
+    console.log('[DEBUG route.ts] Question analysis:', questionAnalysis);
 
     let area = questionAnalysis.targetArea;
     const topic = questionAnalysis.topic;
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     // ============================
 
 if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis.targetAreas.length > 1) {
-  console.log('[DEBUG-S5.1] Multi-suburb comparison requested:', questionAnalysis.targetAreas);
+  console.log('[DEBUG-route.ts] Multi-suburb comparison requested:', questionAnalysis.targetAreas);
 
   const results: string[] = [];
 
@@ -67,16 +67,96 @@ if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis
 // ============================
 
 else {
-      if (!area) {
-        const suburbDetection = await detectSuburb(userInput);
-        if (suburbDetection.possible_suburb) {
-          area = suburbDetection.possible_suburb;
-          console.log('[DEBUG] Suburb auto-detected:', area);
-        }
-      }
+  const context = getContext();
+
+  // 1️⃣ Check if we are expecting suburb clarification
+  if (context.clarificationOptions && context.clarificationOptions.length > 0) {
+    console.log('[DEBUG route.ts] User provided clarification input:', userInput);
+
+    // Try to match user clarification to stored options
+    const userInputNormalized = userInput.trim().toLowerCase();
+    const clarifiedMatch = context.clarificationOptions.find(opt =>
+      opt.state?.toLowerCase() === userInputNormalized ||
+      opt.lga?.toLowerCase().includes(userInputNormalized) ||
+      opt.suburb.toLowerCase().includes(userInputNormalized)
+    );
+
+    if (clarifiedMatch) {
+      console.log('[DEBUG route.ts] User clarification matched:', clarifiedMatch);
+
+      // Update area, lga, state
+      area = clarifiedMatch.suburb;
+      lga = clarifiedMatch.lga;
+      state = clarifiedMatch.state;
+
+      // Clear clarification options from context
+      updateContext({ suburb: area, lga: lga, state: state, clarificationOptions: [] });
+    } else {
+      // If no match, ask again
+      console.log('[DEBUG route.ts] User clarification did not match any options');
+
+      const optionsList = context.clarificationOptions
+        .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
+        .join("\n• ");
+
+      const clarificationReply = `I didn't catch which suburb you meant. Could you clarify again?\n\nOptions:\n• ${optionsList}\n\nPlease reply specifying suburb, state, or LGA.`;
+
+      return NextResponse.json({
+        reply: clarificationReply,
+        clarificationNeeded: true,
+        options: context.clarificationOptions
+      });
+    }
+  }
+
+  if (!area) {
+    const suburbDetection = await detectSuburb(userInput);
+
+    if (suburbDetection.needsClarification && suburbDetection.multipleMatches) {
+      console.log('[DEBUG route.ts] Multiple matches found, storing clarification options in context');
+
+      // Store options in context
+      updateContext({ clarificationOptions: suburbDetection.multipleMatches });
+
+      const optionsList = suburbDetection.multipleMatches
+        .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
+        .join("\n• ");
+
+      const clarificationReply = `I found multiple suburbs named "${suburbDetection.extractedSuburb}". Which one do you mean?\n\n• ${optionsList}\n\nPlease reply specifying the state or LGA.`;
+
+      return NextResponse.json({
+        reply: clarificationReply,
+        clarificationNeeded: true,
+        options: suburbDetection.multipleMatches
+      });
+    }
+
+    if (suburbDetection.possible_suburb) {
+      area = suburbDetection.possible_suburb;
+      lga = suburbDetection.lga;
+      state = suburbDetection.state;
+      console.log('[DEBUG route.ts] Suburb auto-detected:', area);
+
+      // Update context
+      updateContext({ suburb: area, lga, state, clarificationOptions: [] });
+    }
+  }
+
+  if (area) {
+    updateContext({
+  suburb: area,
+  lga: lga ?? undefined,
+  state: state ?? undefined,
+  clarificationOptions: []
+});
+  }
+
+  console.log('[DEBUG route.ts] Current context:', getContext());
+}
+
 
 if (area) {
-  console.log('[DEBUG] Looking up LGA and State for suburb:', area);
+  console.log('[DEBUG route.ts] Looking up LGA and State for suburb:', area);
   const { data: suburbInfo, error: suburbError } = await supabase
     .from('lga_suburbs')
     .select('lga, state')
@@ -84,22 +164,21 @@ if (area) {
     .single();
 
   if (suburbError) {
-    console.error('[ERROR] Failed to lookup suburb details:', suburbError);
+    console.error('[ERROR: route.ts] Failed to lookup suburb details:', suburbError);
   } else if (suburbInfo) {
     lga = suburbInfo.lga;
     state = suburbInfo.state;
-    console.log('[DEBUG] Found LGA:', lga, 'State:', state);
+    console.log('[DEBUG route.ts] Found LGA:', lga, 'State:', state);
   }
-}
-
 
       if (area) {
         updateContext({ suburb: area });
       }
 
       const context = getContext();
-      console.log('[DEBUG] Current context:', context);
+      console.log('[DEBUG route.ts] Current context:', context);
 
+      
       if (topic === 'price' && area) {
         finalReply = await answerMedianPrice(area);
       } else if (topic === 'crime' && area) {
@@ -123,7 +202,7 @@ if (area) {
  // ===============================
     // ✅ Central Logging Block
     // ===============================
-    console.log('[DEBUG-LOG] Preparing to log to database');
+    console.log('[DEBUG route.ts] Preparing to log to database');
     const { data, error } = await supabase
       .from('log_ai_chat')
       .insert({
@@ -138,13 +217,13 @@ if (area) {
       .select('uuid');
 
     if (error) {
-      console.error('[ERROR-LOG] Logging failed:', error);
+      console.error('[ERROR route.ts] Logging failed:', error);
     } else {
-      console.log('[DEBUG-LOG] Conversation logged successfully, UUID:', data?.[0]?.uuid);
+      console.log('[DEBUG route.ts] Conversation logged successfully, UUID:', data?.[0]?.uuid);
     }
 
     // 💬 Add suggestions for frontend quick questions
-    console.log('[DEBUG-SUGGESTIONS] Adding predefined suggestions for topic:', topic);
+    console.log('[DEBUG route.ts] Adding predefined suggestions for topic:', topic);
     const suggestions = getSuggestionsForTopic(topic);
 
     return NextResponse.json({
@@ -153,7 +232,7 @@ if (area) {
       suggestions // ← include in response for UI buttons
     });
   } catch (err) {
-    console.error('[ERROR] /api/ai-chat crashed:', err);
+    console.error('[ERROR route.ts] /api/ai-chat crashed:', err);
     return NextResponse.json(
       { error: 'Sorry, something went wrong. Please try again.' },
       { status: 500 }

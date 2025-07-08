@@ -7,6 +7,11 @@ export type UserContext = {
   budget?: string;
   purpose?: string; // invest, live, rent
   propertyType?: string;
+    clarificationOptions?: Array<{
+    suburb: string;
+    lga: string;
+    state: string;
+    }>
 };
 
 let sessionContext: UserContext = {};
