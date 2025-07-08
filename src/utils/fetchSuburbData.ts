@@ -1,30 +1,28 @@
 //utils/fetchSuburbData.ts
 
 import { supabase } from '@/lib/supabaseClient';
+import type { PriceRecord } from "./answers/priceGrowthAnswer";
 
-export async function fetchMedianPrice(suburb: string) {
-  console.log('[DEBUG] fetchMedianPrice - Searching for suburb:', suburb);
-  
-  try {
-    // OPTIMIZED: Only get last 5 years (2020-2024) for efficiency and relevance
-    const currentYear = new Date().getFullYear(); //2024
-    const startYear = currentYear - 4; // Last 5 years
+export async function fetchMedianPrice(suburb: string, minYear?: number, maxYear?: number): Promise<PriceRecord[]> {
+ console.log("[DEBUG fetchSuburbData] fetchMedianPrice - Searching for suburb:", suburb);
+
+  let query = supabase
+    .from("median_price")
+    .select("*")
+    .eq("suburb", suburb);
+
+  if (minYear && maxYear) {
+    console.log("[DEBUG fetchSuburbData] fetchMedianPrice - Applying year range filter directly in query:", minYear, "to", maxYear);
+    query = query.gte("year", minYear).lte("year", maxYear);
+  }
+      
+     const { data, error } = await query;
     
-    console.log('[DEBUG] fetchMedianPrice - Filtering for years:', startYear, 'to', currentYear);
-    
-    // Try exact match first with year filter
-    let { data, error } = await supabase
-      .from('median_price')
-      .select('*')
-      .eq('suburb', suburb)
-      .gte('year', startYear) // Only last 5 years
-      .order('year', { ascending: true });
-    
-    console.log('[DEBUG] fetchMedianPrice - Exact match results:', data?.length || 0, 'records');
-    
+    /* - TEMP commented - to test exact match functionality - delete if tested working - 08/07/2025
+
     // If no exact match, try case-insensitive with year filter
     if (!data || data.length === 0) {
-      console.log('[DEBUG] fetchMedianPrice - Trying case-insensitive match...');
+      console.log('[DEBUG fetchSuburbData] fetchMedianPrice - Trying case-insensitive match...');
       const result = await supabase
         .from('median_price')
         .select('*')
@@ -34,7 +32,7 @@ export async function fetchMedianPrice(suburb: string) {
       
       data = result.data;
       error = result.error;
-      console.log('[DEBUG] fetchMedianPrice - Case-insensitive results:', data?.length || 0, 'records');
+      console.log('[DEBUG fetchSuburbData] fetchMedianPrice - Case-insensitive results:', data?.length || 0, 'records');
     }
     
     // If still no match, try partial match with year filter
@@ -49,25 +47,20 @@ export async function fetchMedianPrice(suburb: string) {
       
       data = result.data;
       error = result.error;
-      console.log('[DEBUG] fetchMedianPrice - Partial match results:', data?.length || 0, 'records');
+      console.log('[DEBUG fetchSuburbData] fetchMedianPrice - Partial match results:', data?.length || 0, 'records');
     }
-    
-    if (error) {
-      console.error('[ERROR] fetchMedianPrice - Database error:', error);
-      return { data: null, error };
-    }
-    
-    console.log('[DEBUG] fetchMedianPrice - Final results:', data?.length || 0, 'records found (last 5 years only)');
-    return { data, error: null };
-    
-  } catch (err) {
-    console.error('[ERROR] fetchMedianPrice - Exception:', err);
-    return { data: null, error: err };
-  }
+    */
+   if (error || !data) {
+  console.error('[ERROR] fetchMedianPrice - Database error:', error);
+  return []; // Return empty array to match type
+}
+
+console.log('[DEBUG fetchSuburbData] fetchMedianPrice - Final results:', data.length, 'records found');
+return data as PriceRecord[];
 }
 
 export async function fetchDemographics(suburb: string) {
-  console.log('[DEBUG] fetchDemographics - Searching for suburb:', suburb);
+  console.log('[DEBUG fetchSuburbData] fetchDemographics - Searching for suburb:', suburb);
   
   try {
     // Try exact match first
@@ -76,7 +69,7 @@ export async function fetchDemographics(suburb: string) {
       .select('*')
       .eq('SA2Name', suburb);
     
-    console.log('[DEBUG] fetchDemographics - Exact match results:', data?.length || 0, 'records');
+    console.log('[DEBUG fetchSuburbData] fetchDemographics - Exact match results:', data?.length || 0, 'records');
     
     // If no exact match, try case-insensitive
     if (!data || data.length === 0) {
@@ -88,12 +81,12 @@ export async function fetchDemographics(suburb: string) {
       
       data = result.data;
       error = result.error;
-      console.log('[DEBUG] fetchDemographics - Case-insensitive results:', data?.length || 0, 'records');
+      console.log('[DEBUG fetchSuburbData] fetchDemographics - Case-insensitive results:', data?.length || 0, 'records');
     }
     
     // If still no match, try partial match
     if (!data || data.length === 0) {
-      console.log('[DEBUG] fetchDemographics - Trying partial match...');
+      console.log('[DEBUG fetchSuburbData] fetchDemographics - Trying partial match...');
       const result = await supabase
         .from('sa2_demographics')
         .select('*')
@@ -101,7 +94,7 @@ export async function fetchDemographics(suburb: string) {
       
       data = result.data;
       error = result.error;
-      console.log('[DEBUG] fetchDemographics - Partial match results:', data?.length || 0, 'records');
+      console.log('[DEBUG fetchSuburbData] fetchDemographics - Partial match results:', data?.length || 0, 'records');
     }
     
     if (error) {
@@ -109,7 +102,7 @@ export async function fetchDemographics(suburb: string) {
       return { data: null, error };
     }
     
-    console.log('[DEBUG] fetchDemographics - Final results:', data?.length || 0, 'records found');
+    console.log('[DEBUG fetchSuburbData] fetchDemographics - Final results:', data?.length || 0, 'records found');
     return { data, error: null };
     
   } catch (err) {
@@ -119,7 +112,7 @@ export async function fetchDemographics(suburb: string) {
 }
 
 export async function fetchPopulation(suburb: string) {
-  console.log('[DEBUG] fetchPopulation - Searching for suburb:', suburb);
+  console.log('[DEBUG fetchSuburbData] fetchPopulation - Searching for suburb:', suburb);
   
   try {
     // Optimized query - get only unique year/totalPersons combinations
@@ -131,11 +124,11 @@ export async function fetchPopulation(suburb: string) {
       .gte('year', 2021) // Only recent years for efficiency
       .order('year', { ascending: true });
     
-    console.log('[DEBUG] fetchPopulation - Exact match results:', data?.length || 0, 'records');
+    console.log('[DEBUG fetchSuburbData] fetchPopulation - Exact match results:', data?.length || 0, 'records');
     
     // If no exact match, try case-insensitive
     if (!data || data.length === 0) {
-      console.log('[DEBUG] fetchPopulation - Trying case-insensitive match...');
+      console.log('[DEBUG fetchSuburbData] fetchPopulation - Trying case-insensitive match...');
       const result = await supabase
         .from('sa2_population')
         .select('year, totalPersons, SA2Name, SA2Code')
@@ -146,7 +139,7 @@ export async function fetchPopulation(suburb: string) {
       
       data = result.data;
       error = result.error;
-      console.log('[DEBUG] fetchPopulation - Case-insensitive results:', data?.length || 0, 'records');
+      console.log('[DEBUG fetchSuburbData] fetchPopulation - Case-insensitive results:', data?.length || 0, 'records');
     }
     
     if (error) {
@@ -178,8 +171,8 @@ export async function fetchPopulation(suburb: string) {
       return acc;
     }, []) || [];
     
-    console.log('[DEBUG] fetchPopulation - Final unique results:', uniqueData.length, 'records found');
-    console.log('[DEBUG] fetchPopulation - Data:', uniqueData);
+    console.log('[DEBUG fetchSuburbData] fetchPopulation - Final unique results:', uniqueData.length, 'records found');
+    console.log('[DEBUG fetchSuburbData] fetchPopulation - Data:', uniqueData);
 
     return { data: uniqueData, error: null };
     
@@ -190,15 +183,15 @@ export async function fetchPopulation(suburb: string) {
 }
 
 export async function fetchRentals(lga: string) {
-  console.log('[DEBUG] fetchRentals - Searching for LGA:', lga);
+  console.log('[DEBUG fetchSuburbData] fetchRentals - Searching for LGA:', lga);
   
   try {
     // OPTIMIZED: Only get last 5 years and specific bedroom configurations
     const currentYear = new Date().getFullYear();
     const startYear = currentYear - 4; // Last 5 years
     
-    console.log('[DEBUG] fetchRentals - Filtering for years:', startYear, 'to', currentYear);
-    console.log('[DEBUG] fetchRentals - Target bedrooms: Houses (3BHK, 4BHK), Units (2BHK)');
+    console.log('[DEBUG fetchSuburbData] fetchRentals - Filtering for years:', startYear, 'to', currentYear);
+    console.log('[DEBUG fetchSuburbData] fetchRentals - Target bedrooms: Houses (3BHK, 4BHK), Units (2BHK)');
     
     const { data, error } = await supabase
       .from('median_rentals')
@@ -226,14 +219,14 @@ export async function fetchRentals(lga: string) {
       // FIXED: Get unique years with proper typing
       const years = Array.from(new Set(data.map((d: { year?: number }) => d.year).filter(Boolean))).sort();
       
-      console.log('[DEBUG] fetchRentals - Results breakdown:');
+      console.log('[DEBUG fetchSuburbData] fetchRentals - Results breakdown:');
       console.log('  - Houses (3BHK/4BHK):', houses.length, 'records');
       console.log('  - Units (2BHK):', units.length, 'records');
       console.log('  - Years covered:', years);
       console.log('  - Sample data:', data[0]);
     }
     
-    console.log('[DEBUG] fetchRentals - Final results:', data?.length || 0, 'records found (last 5 years, targeted bedrooms)');
+    console.log('[DEBUG fetchSuburbData] fetchRentals - Final results:', data?.length || 0, 'records found (last 5 years, targeted bedrooms)');
     return { data, error: null };
     
   } catch (err) {
@@ -243,7 +236,7 @@ export async function fetchRentals(lga: string) {
 }
 
 export async function fetchProjects(lga: string) {
-  console.log('[DEBUG] fetchProjects - Searching for LGA:', lga);
+  console.log('[DEBUG fetchSuburbData] fetchProjects - Searching for LGA:', lga);
   
   try {
     const { data, error } = await supabase
@@ -256,7 +249,7 @@ export async function fetchProjects(lga: string) {
       return { data: null, error };
     }
     
-    console.log('[DEBUG] fetchProjects - Results:', data?.length || 0, 'records found');
+    console.log('[DEBUG fetchSuburbData] fetchProjects - Results:', data?.length || 0, 'records found');
     return { data, error: null };
     
   } catch (err) {
@@ -266,14 +259,14 @@ export async function fetchProjects(lga: string) {
 }
 
 export async function fetchCrime(suburb: string) {
-  console.log('[DEBUG] fetchCrime - Searching for suburb:', suburb);
+  console.log('[DEBUG fetchSuburbData] fetchCrime - Searching for suburb:', suburb);
   
   try {
     // OPTIMIZED: Only get recent years and specific columns
     const currentYear = new Date().getFullYear();
     const startYear = currentYear - 4; // Last 5 years
     
-    console.log('[DEBUG] fetchCrime - Filtering for years:', startYear, 'to', currentYear);
+    console.log('[DEBUG fetchSuburbData] fetchCrime - Filtering for years:', startYear, 'to', currentYear);
     
     let { data, error } = await supabase
       .from('crime_stats')
@@ -283,11 +276,11 @@ export async function fetchCrime(suburb: string) {
       .gte('year', startYear) // Only recent years
       .order('year', { ascending: true });
     
-    console.log('[DEBUG] fetchCrime - Exact match results:', data?.length || 0, 'records');
+    console.log('[DEBUG fetchSuburbData] fetchCrime - Exact match results:', data?.length || 0, 'records');
     
     // Try case-insensitive if no exact match
     if (!data || data.length === 0) {
-      console.log('[DEBUG] fetchCrime - Trying case-insensitive match...');
+      console.log('[DEBUG fetchSuburbData] fetchCrime - Trying case-insensitive match...');
       const result = await supabase
         .from('crime_stats')
         .select('offenceCount, year, suburb')
@@ -298,12 +291,12 @@ export async function fetchCrime(suburb: string) {
       
       data = result.data;
       error = result.error;
-      console.log('[DEBUG] fetchCrime - Case-insensitive results:', data?.length || 0, 'records');
+      console.log('[DEBUG fetchSuburbData] fetchCrime - Case-insensitive results:', data?.length || 0, 'records');
     }
     
     // Try partial match if still no results
     if (!data || data.length === 0) {
-      console.log('[DEBUG] fetchCrime - Trying partial match...');
+      console.log('[DEBUG fetchSuburbData] fetchCrime - Trying partial match...');
       const result = await supabase
         .from('crime_stats')
         .select('offenceCount, year, suburb')
@@ -314,7 +307,7 @@ export async function fetchCrime(suburb: string) {
       
       data = result.data;
       error = result.error;
-      console.log('[DEBUG] fetchCrime - Partial match results:', data?.length || 0, 'records');
+      console.log('[DEBUG fetchSuburbData] fetchCrime - Partial match results:', data?.length || 0, 'records');
     }
     
     if (error) {
@@ -324,16 +317,16 @@ export async function fetchCrime(suburb: string) {
     
     // Log sample data for debugging
     if (data && data.length > 0) {
-      console.log('[DEBUG] fetchCrime - Sample record:', data[0]);
+      console.log('[DEBUG fetchSuburbData] fetchCrime - Sample record:', data[0]);
       // FIXED: Get unique years with proper typing
       const years = Array.from(new Set(data.map((d: { year?: number }) => d.year).filter(Boolean))).sort();
-      console.log('[DEBUG] fetchCrime - Years available:', years);
+      console.log('[DEBUG fetchSuburbData] fetchCrime - Years available:', years);
       // FIXED: Reduce function with proper typing
       const totalOffences = data.reduce((sum: number, d: { offenceCount?: number }) => sum + (d.offenceCount || 0), 0);
-      console.log('[DEBUG] fetchCrime - Total offences across all years:', totalOffences);
+      console.log('[DEBUG fetchSuburbData] fetchCrime - Total offences across all years:', totalOffences);
     }
     
-    console.log('[DEBUG] fetchCrime - Final results:', data?.length || 0, 'records found (last 5 years)');
+    console.log('[DEBUG fetchSuburbData] fetchCrime - Final results:', data?.length || 0, 'records found (last 5 years)');
     return { data, error: null };
     
   } catch (err) {
@@ -343,7 +336,7 @@ export async function fetchCrime(suburb: string) {
 }
 
 export async function fetchHouseholdForecast(suburb: string) {
-  console.log('[DEBUG] fetchHouseholdForecast - Searching for suburb/region:', suburb);
+  console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Searching for suburb/region:', suburb);
   
   try {
     // First try exact match with suburb name
@@ -354,11 +347,11 @@ export async function fetchHouseholdForecast(suburb: string) {
       .in('year', [2021, 2026, 2031, 2036])
       .order('year', { ascending: true });
     
-    console.log('[DEBUG] fetchHouseholdForecast - Exact match results:', data?.length || 0, 'records');
+    console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Exact match results:', data?.length || 0, 'records');
     
     // If no exact match, try case-insensitive
     if (!data || data.length === 0) {
-      console.log('[DEBUG] fetchHouseholdForecast - Trying case-insensitive match...');
+      console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Trying case-insensitive match...');
       const result = await supabase
         .from('vic_forecast_households')
         .select('*')
@@ -368,12 +361,12 @@ export async function fetchHouseholdForecast(suburb: string) {
       
       data = result.data;
       error = result.error;
-      console.log('[DEBUG] fetchHouseholdForecast - Case-insensitive results:', data?.length || 0, 'records');
+      console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Case-insensitive results:', data?.length || 0, 'records');
     }
     
     // If still no match, try partial match
     if (!data || data.length === 0) {
-      console.log('[DEBUG] fetchHouseholdForecast - Trying partial match...');
+      console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Trying partial match...');
       const result = await supabase
         .from('vic_forecast_households')
         .select('*')
@@ -383,7 +376,7 @@ export async function fetchHouseholdForecast(suburb: string) {
       
       data = result.data;
       error = result.error;
-      console.log('[DEBUG] fetchHouseholdForecast - Partial match results:', data?.length || 0, 'records');
+      console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Partial match results:', data?.length || 0, 'records');
     }
     
     if (error) {
@@ -391,9 +384,9 @@ export async function fetchHouseholdForecast(suburb: string) {
       return { data: null, error };
     }
     
-    console.log('[DEBUG] fetchHouseholdForecast - Final results:', data?.length || 0, 'records found');
+    console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Final results:', data?.length || 0, 'records found');
     if (data && data.length > 0) {
-      console.log('[DEBUG] fetchHouseholdForecast - Sample data:', data[0]);
+      console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Sample data:', data[0]);
       
       try {
         // FIXED: Ultra-safe approach with explicit typing
@@ -407,11 +400,11 @@ export async function fetchHouseholdForecast(suburb: string) {
         const regions = Array.from(new Set(data.map((d: HouseholdRecord) => d?.region).filter(r => r != null)));
         const householdTypes = Array.from(new Set(data.map((d: HouseholdRecord) => d?.householdType).filter(h => h != null)));
         
-        console.log('[DEBUG] fetchHouseholdForecast - Available years:', years);
-        console.log('[DEBUG] fetchHouseholdForecast - Available regions:', regions);
-        console.log('[DEBUG] fetchHouseholdForecast - Available household types:', householdTypes);
+        console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Available years:', years);
+        console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Available regions:', regions);
+        console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Available household types:', householdTypes);
       } catch {
-        console.log('[DEBUG] fetchHouseholdForecast - Logging error, skipping detailed logs');
+        console.log('[DEBUG fetchSuburbData] fetchHouseholdForecast - Logging error, skipping detailed logs');
       }
     }
     

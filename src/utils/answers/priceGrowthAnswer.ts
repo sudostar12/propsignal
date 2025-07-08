@@ -2,51 +2,63 @@
 
 import { fetchMedianPrice } from "@/utils/fetchSuburbData";
 
+/**
+ * Interface for strong typing price records.
+ */
 export interface PriceRecord {
   year: number;
-  median_price: number;
+  medianPrice: number;
+  propertyType: string;
 }
 
-
-// [DEBUG-PG1] Price growth answer function
-export async function answerPriceGrowth(suburb: string, years: number = 5): Promise<string> {
+/**
+ * Answer function for price growth trends.
+ * @param suburb - suburb name
+ * @param requestedYears - number of years for growth trend (defaults to 3)
+ * @returns string - formatted AI-friendly growth message
+ */
+export async function answerPriceGrowth(suburb: string, requestedYears: number = 3): Promise<string> {
   console.log("[DEBUG-PG1] Fetching median price data for:", suburb);
 
-  const dataResult = await fetchMedianPrice(suburb);
-  const prices: PriceRecord[] = dataResult.data ?? [];
+  const allRecords: PriceRecord[] = await fetchMedianPrice(suburb);
+  console.log("[DEBUG-PG2] Median price dataset length:", allRecords.length);
 
-  // [DEBUG-PG2] Check dataset
-  console.log("[DEBUG-PG2] Median price dataset length:", prices.length);
+  const latestYear = Math.max(...allRecords.map((r) => r.year));
+  console.log("[DEBUG-PG2.1] Latest available year in data:", latestYear);
 
-  if (prices.length === 0) {
-    return `Sorry, I couldn't find historical price data for ${suburb}.`;
-  }
+  const finalYears = Math.min(requestedYears, 3);
+  const startYear = latestYear - finalYears + 1;
+  console.log("[DEBUG-PG2.2] Final years range:", startYear, "to", latestYear);
 
-  // Sort prices by year if you have "year" column, adjust as needed
-  const sorted: PriceRecord[] = prices
-    .filter((p: PriceRecord) => p.year)
-    .sort((a: PriceRecord, b: PriceRecord) => a.year - b.year);
+  const filtered = allRecords.filter((r) => r.year >= startYear && r.year <= latestYear);
+  console.log("[DEBUG-PG2.3] Filtered data count after year range filter:", filtered.length);
 
-  // Find oldest and most recent price within N years
-  const currentYear = new Date().getFullYear();
-  const startYear = currentYear - years;
+  const houseRecords = filtered.filter((r) => r.propertyType === "house").sort((a, b) => b.year - a.year);
+  const unitRecords = filtered.filter((r) => r.propertyType === "unit").sort((a, b) => b.year - a.year);
 
-  const startRecord = sorted.find((p: PriceRecord) => p.year === startYear);
-  const latestRecord = sorted.find((p: PriceRecord) => p.year === currentYear - 1 || p.year === currentYear);
+  console.log("[DEBUG-PG3] House records count:", houseRecords.length);
+  console.log("[DEBUG-PG3] Unit records count:", unitRecords.length);
 
-  if (!startRecord || !latestRecord) {
-    return `I couldn't find enough data to calculate ${years}-year price growth for ${suburb}.`;
-  }
+  const calcGrowth = (records: PriceRecord[]) => {
+    if (records.length < 2) return null;
+    const latest = records[0].medianPrice;
+    const earliest = records[records.length - 1].medianPrice;
+    if (!earliest || earliest === 0) return null;
+    return ((latest - earliest) / earliest) * 100;
+  };
 
-  const startPrice = startRecord.median_price;
-  const latestPrice = latestRecord.median_price;
+  const houseGrowth = calcGrowth(houseRecords);
+  const unitGrowth = calcGrowth(unitRecords);
 
-  if (!startPrice || !latestPrice) {
-    return `Missing price data to compute growth for ${suburb}.`;
-  }
+  let houseMsg = houseGrowth !== null
+    ? `🏠 House prices grew by ${houseGrowth.toFixed(1)}% from ${startYear} to ${latestYear}.`
+    : `Not enough data to compute growth for houses.`;
 
-  const growthPercent = ((latestPrice - startPrice) / startPrice) * 100;
-  console.log("[DEBUG-PG3] Price growth percent:", growthPercent);
+  let unitMsg = unitGrowth !== null
+    ? `🏢 Unit prices grew by ${unitGrowth.toFixed(1)}% from ${startYear} to ${latestYear}.`
+    : `Not enough data to compute growth for units.`;
 
-  return `Over the past ${years} years, the median price in ${suburb} has changed from ~$${startPrice.toLocaleString()} to ~$${latestPrice.toLocaleString()}, representing an approximate growth of ${growthPercent.toFixed(1)}%.`;
+  const finalMsg = `${houseMsg}\n\n${unitMsg}\n\n⚡ I currently provide trends for up to 3 years only. More in-depth historical insights will be available soon!`;
+
+  return finalMsg;
 }
