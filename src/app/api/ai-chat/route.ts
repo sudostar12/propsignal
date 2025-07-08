@@ -10,6 +10,7 @@ import { detectSuburb } from '@/utils/detectSuburb';
 import { supabase } from '@/lib/supabaseClient';
 import { answerPriceGrowth } from "@/utils/answers/priceGrowthAnswer";
 import { answerNewProjects } from "@/utils/answers/newProjectsAnswer";
+import { getSuggestionsForTopic } from '@/utils/suggestions';
 
 
 //const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -142,7 +143,15 @@ if (area) {
       console.log('[DEBUG-LOG] Conversation logged successfully, UUID:', data?.[0]?.uuid);
     }
 
-    return NextResponse.json({ reply: finalReply, uuid: data?.[0]?.uuid || null });
+    // 💬 Add suggestions for frontend quick questions
+    console.log('[DEBUG-SUGGESTIONS] Adding predefined suggestions for topic:', topic);
+    const suggestions = getSuggestionsForTopic(topic);
+
+    return NextResponse.json({
+      reply: finalReply,
+      uuid: data?.[0]?.uuid || null,
+      suggestions // ← include in response for UI buttons
+    });
   } catch (err) {
     console.error('[ERROR] /api/ai-chat crashed:', err);
     return NextResponse.json(
