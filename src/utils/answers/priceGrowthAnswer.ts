@@ -50,11 +50,11 @@ export async function answerPriceGrowth(suburb: string, requestedYears: number =
   const houseGrowth = calcGrowth(houseRecords);
   const unitGrowth = calcGrowth(unitRecords);
 
-  let houseMsg = houseGrowth !== null
+  const houseMsg = houseGrowth !== null
     ? `🏠 House prices grew by ${houseGrowth.toFixed(1)}% from ${startYear} to ${latestYear}.`
     : `Not enough data to compute growth for houses.`;
 
-  let unitMsg = unitGrowth !== null
+  const unitMsg = unitGrowth !== null
     ? `🏢 Unit prices grew by ${unitGrowth.toFixed(1)}% from ${startYear} to ${latestYear}.`
     : `Not enough data to compute growth for units.`;
 
