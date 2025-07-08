@@ -8,6 +8,9 @@ import { answerRentalYield } from "@/utils/answers/rentalYieldAnswer";
 import { generateGeneralReply } from '@/utils/detectIntent';
 import { detectSuburb } from '@/utils/detectSuburb';
 import { supabase } from '@/lib/supabaseClient';
+import { answerPriceGrowth } from "@/utils/answers/priceGrowthAnswer";
+import { answerNewProjects } from "@/utils/answers/newProjectsAnswer";
+
 
 //const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -102,6 +105,10 @@ if (area) {
         finalReply = await answerCrimeStats(area);
       } else if (topic === 'yield' && area) {
         finalReply = await answerRentalYield(area);
+      }  else if (topic === 'price_growth' && area) {
+        finalReply = await answerPriceGrowth(area, questionAnalysis.years || 5);
+      } else if (topic === 'projects' && area) {
+        finalReply = await answerNewProjects(area);
       } else if (topic === 'profile' && area) {
         finalReply = `Great! You requested a detailed profile for ${area}. Right now, we haven't implemented full profile in this new flow yet, but it's coming soon! Meanwhile, feel free to ask about prices, crime, rental yield, or other specific insights.`;
       } else if (topic === 'compare') {

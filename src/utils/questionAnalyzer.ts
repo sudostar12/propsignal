@@ -15,11 +15,14 @@ You are PropSignal AI's query analyzer. Extract user question details and return
 
 Example format:
 {
-  "topic": "crime",
-  "targetAreas": ["Tarneit", "Aintree"],
-  "compare": true,
+  "topic": "price",
+  "targetAreas": ["Doncaster", "Melton"],
+  "compare": false,
+  "years": 5,
   "state": "Victoria"
 }
+
+Topics can include: "price", "crime", "yield", "profile", "compare", "price_growth", "projects", "general".
 
 Always return JSON object only — no extra text or markdown.
 `;
