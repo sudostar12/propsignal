@@ -103,16 +103,6 @@ const { data: allSuburbs, error } = await supabase
   const normalizedExtracted = normalizeSuburbName(extractedSuburb);
   console.log('[DEBUG] detectSuburb - Normalized extracted suburb:', normalizedExtracted);
   
-  // Step 4: Debug - Check what Box Hill entries exist - TEMP - DELETE after fixing. 
-  if (normalizedExtracted.includes('box')) {
-    const boxHillSuburbs = allSuburbs.filter(s => 
-      s.suburb.toLowerCase().includes('box')
-    );
-    console.log('[DEBUG] All suburbs containing "box":', 
-      boxHillSuburbs.map(s => `"${s.suburb}" (${s.state})`)
-    );
-  }
-  
   // Step 5: Find exact matches with normalized comparison
   console.log('[DEBUG] detectSuburb - Looking for matches for:', normalizedExtracted);
 
@@ -123,13 +113,15 @@ const { data: allSuburbs, error } = await supabase
     const normalizedDb = normalizeSuburbName(s.suburb);
     const isMatch = normalizedDb === normalizedExtracted;
     
-    // Extra debug for Box Hill
+   /* // Extra debug for Box Hill - delete after testing. 
     if (normalizedExtracted === 'box hill' && s.suburb.toLowerCase().includes('box')) {
       console.log(`[DEBUG] Comparing DB: "${s.suburb}" (normalized: "${normalizedDb}") with extracted: "${extractedSuburb}" (normalized: "${normalizedExtracted}") - Match: ${isMatch}`);
     }
-    
+  */
+
     return isMatch;
   });
+  
   
   console.log('[DEBUG] detectSuburb - Found matches:', 
     allMatches.map(s => `${s.suburb} (${s.lga}, ${s.state})`)

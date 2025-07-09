@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG route.ts] Question analysis:', questionAnalysis);
 
     let area = questionAnalysis.targetArea;
-    const topic = questionAnalysis.topic;
+    let topic = questionAnalysis.topic;
     let finalReply = '';
     let isVague = false;
     let lga = null;
@@ -50,8 +50,6 @@ if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis
       result = await answerCrimeStats(suburb);
     } else if (questionAnalysis.topic === "price") {
       result = await answerMedianPrice(suburb);
-    } else if (questionAnalysis.topic === "yield") {
-      result = await answerRentalYield(suburb);
     } else {
       result = `I don't yet support "${questionAnalysis.topic}" data.`;
     }
@@ -63,7 +61,7 @@ if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis
     }
   
 // ============================
-// [DEBUG-S5.2] STATE-LEVEL QUERY HANDLING
+// [DEBUG-S5.2] MULTI-SUBURB QUERY HANDLING
 // ============================
 
 else {
@@ -72,6 +70,10 @@ else {
   // 1️⃣ Check if we are expecting suburb clarification
   if (context.clarificationOptions && context.clarificationOptions.length > 0) {
     console.log('[DEBUG route.ts] User provided clarification input:', userInput);
+
+     // ✅ Use topic from original context instead of re-analyzing user clarification input for multi-suburb flow.
+  topic = context.pendingTopic || 'general';
+  console.log('[DEBUG route.ts] Using pending topic from context:', topic);
 
     // Try to match user clarification to stored options
     const userInputNormalized = userInput.trim().toLowerCase();
@@ -90,7 +92,7 @@ else {
       state = clarifiedMatch.state;
 
       // Clear clarification options from context
-      updateContext({ suburb: area, lga: lga, state: state, clarificationOptions: [] });
+      updateContext({ suburb: area, lga: lga, state: state, clarificationOptions: [], pendingTopic: undefined });
     } else {
       // If no match, ask again
       console.log('[DEBUG route.ts] User clarification did not match any options');
@@ -116,7 +118,7 @@ else {
       console.log('[DEBUG route.ts] Multiple matches found, storing clarification options in context');
 
       // Store options in context
-      updateContext({ clarificationOptions: suburbDetection.multipleMatches });
+      updateContext({ clarificationOptions: suburbDetection.multipleMatches, pendingTopic: topic });
 
       const optionsList = suburbDetection.multipleMatches
         .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
@@ -149,7 +151,20 @@ if (area) {
   });
 }
 
-  console.log('[DEBUG route.ts] Current context:', getContext());
+  console.log('[DEBUG route.ts] Current context v1:', getContext());
+}
+
+// Use pendingTopic for multi-suburb clarification scenario
+const context = getContext();
+if (context.pendingTopic) {
+  console.log('[DEBUG route.ts] Using pending topic from context:', context.pendingTopic);
+  topic = context.pendingTopic;
+
+  // Clear pendingTopic so it does not persist
+  updateContext({
+    ...context,
+    pendingTopic: undefined
+  });
 }
 
 
@@ -171,16 +186,20 @@ if (area && (!lga || !state)) {
 
   updateContext({ suburb: area, lga: lga ?? undefined, state: state ?? undefined });
 
-  console.log('[DEBUG route.ts] Current context:', getContext());
+  console.log('[DEBUG route.ts] Current context v2:', getContext());
 
+}
+
+if (area) {
+  console.log('[DEBUG route.ts] Current topic:', topic);
   if (topic === 'price') {
     finalReply = await answerMedianPrice(area);
   } else if (topic === 'crime') {
     finalReply = await answerCrimeStats(area);
   } else if (topic === 'yield') {
-    finalReply = await answerRentalYield(area);
+    finalReply = await answerRentalYield(area, lga);
   } else if (topic === 'price_growth') {
-    finalReply = await answerPriceGrowth(area, questionAnalysis.years || 5);
+    finalReply = await answerPriceGrowth(area, questionAnalysis.years || 3);
   } else if (topic === 'projects') {
     finalReply = await answerNewProjects(area);
   } else if (topic === 'profile') {
@@ -189,6 +208,7 @@ if (area && (!lga || !state)) {
     finalReply = `Comparison queries are coming soon!`;
   } else {
     // ⚠️ fallback still inside — needs to be outside if area exists but topic is general
+    console.log('[DEBUG route.ts] generateGeneralReply:', topic);
     finalReply = await generateGeneralReply(messages, topic);
     isVague = true;
   }
