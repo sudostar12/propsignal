@@ -28,5 +28,5 @@ export async function answerNewProjects(suburb: string, lga: string): Promise<st
     return `🏗️ ${p.project}\n💬 ${p.description}\n💰 Investment: ${p.investment || "N/A"}`;
   }).join("\n\n");
 
-   return `${note}\n\nI found ${projects.length} projects in LGA: ${lga} area). Here are a couple of examples:\n\n${topExamples}\n\nLet me know if you'd like more details on the full list!`;
+   return `${note}\n\nI found ${projects.length} projects in LGA: ${lga}. Here are a few examples:\n\n${topExamples}\n\nLet me know if you'd like to explore projects in another suburb or learn about other insights!`;
 }
