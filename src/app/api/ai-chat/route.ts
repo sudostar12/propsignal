@@ -153,7 +153,7 @@ if (area) {
 }
 
 
-if (area) {
+if (area && (!lga || !state)) {
   console.log('[DEBUG route.ts] Looking up LGA and State for suburb:', area);
   const { data: suburbInfo, error: suburbError } = await supabase
     .from('lga_suburbs')
@@ -198,6 +198,15 @@ if (area) {
   isVague = true;
 }
 
+const currentContext = getContext();
+
+if (!lga && currentContext.lga) {
+  lga = currentContext.lga;
+}
+
+if (!state && currentContext.state) {
+  state = currentContext.state;
+}
 
  // ===============================
     // ✅ Central Logging Block

@@ -32,6 +32,7 @@ export async function detectSuburb(input: string): Promise<DetectionResult> {
   const intent = await detectUserIntent(input);
 console.log('[DEBUG] Detected intent:', intent);
 
+/*
 if (intent !== 'suburb') {
   console.log('[DEBUG] Intent is not suburb — skipping suburb extraction');
     
@@ -42,7 +43,10 @@ if (intent !== 'suburb') {
   message: "I couldn't detect a suburb in your message." // optional fallback
 };
 }
-  
+  */ //temp exclusion for testing suburb logging. 
+
+  console.log('[DEBUG] Detected intent:', intent);
+
   // Step 1: Extract suburb using AI
   console.log('[DEBUG] detectSuburb - Using AI to extract suburb name');
   const extractedSuburb = await extractSuburbUsingAI(input);
