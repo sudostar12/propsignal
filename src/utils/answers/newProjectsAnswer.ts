@@ -3,33 +3,30 @@
 import { fetchProjects } from "@/utils/fetchSuburbData";
 
 export interface ProjectRecord {
-  project_name: string;
-  status: string;
+  project: string;
+  description: string;
+  investment: string;
 }
 
 // [DEBUG-NP1] New projects answer function
-export async function answerNewProjects(suburb: string): Promise<string> {
-  console.log("[DEBUG-NP1] Fetching projects for:", suburb);
+export async function answerNewProjects(suburb: string, lga: string): Promise<string> {
+  console.log("[DEBUG-NP1] Fetching projects for: Suburb:", suburb, 'and LGA:', lga);
 
-  const dataResult = await fetchProjects(suburb);
+  const dataResult = await fetchProjects(lga);
   const projects: ProjectRecord[] = dataResult.data ?? [];
 
   console.log("[DEBUG-NP2] Total projects found:", projects.length);
 
   if (projects.length === 0) {
-    return `I couldn't find any active or planned projects in ${suburb}.`;
+    return `I couldn't find any major projects reported in ${suburb}.`;
   }
+// Note to user about LGA-level data
+  const note = `⚡ Note: Project insights are provided at the LGA (local government area) level and may cover a broader area than just ${suburb}.`;
 
-  // Example: count active projects
-  const activeProjects: ProjectRecord[] = projects.filter(
-    (p: ProjectRecord) => p.status === "active" || p.status === "planned"
-  );
+// Show top 3 example projects with investment info
+  const topExamples = projects.slice(0, 3).map((p) => {
+    return `🏗️ ${p.project}\n💬 ${p.description}\n💰 Investment: ${p.investment || "N/A"}`;
+  }).join("\n\n");
 
-  if (activeProjects.length === 0) {
-    return `There are no major upcoming projects currently reported for ${suburb}.`;
-  }
-
-  const majorExamples = activeProjects.slice(0, 2).map((p) => p.project_name).join(", ");
-
-  return `I found ${activeProjects.length} active or planned projects in ${suburb}. For example: ${majorExamples}. Let me know if you'd like to see more details on each project.`;
+   return `${note}\n\nI found ${projects.length} projects in LGA: ${lga} area). Here are a couple of examples:\n\n${topExamples}\n\nLet me know if you'd like more details on the full list!`;
 }

@@ -137,7 +137,7 @@ else {
       area = suburbDetection.possible_suburb;
       lga = suburbDetection.lga;
       state = suburbDetection.state;
-      console.log('[DEBUG route.ts] Suburb auto-detected:', area);
+      console.log('[DEBUG route.ts] Suburb auto-detected:', area, ',', lga, ',', state);
 
       // Update context
       updateContext({ suburb: area, lga, state, clarificationOptions: [] });
@@ -167,7 +167,7 @@ if (context.pendingTopic) {
   });
 }
 
-
+/* - The suburb, lga and state lookup is done in detectSuburb.ts - this code is redundant - DELETE after testing.  
 if (area && (!lga || !state)) {
   console.log('[DEBUG route.ts] Looking up LGA and State for suburb:', area);
   const { data: suburbInfo, error: suburbError } = await supabase
@@ -189,6 +189,7 @@ if (area && (!lga || !state)) {
   console.log('[DEBUG route.ts] Current context v2:', getContext());
 
 }
+*/
 
 if (area) {
   console.log('[DEBUG route.ts] Current topic:', topic);
@@ -197,11 +198,17 @@ if (area) {
   } else if (topic === 'crime') {
     finalReply = await answerCrimeStats(area);
   } else if (topic === 'yield') {
+    if (!lga) { //this is to ensure lga is passed correctly from detectSuburb.ts for yield topic as the dataset is lga level.
+    throw new Error('route.ts error - LGA is required for rental yield calculation but is missing');
+  }
     finalReply = await answerRentalYield(area, lga);
   } else if (topic === 'price_growth') {
     finalReply = await answerPriceGrowth(area, questionAnalysis.years || 3);
   } else if (topic === 'projects') {
-    finalReply = await answerNewProjects(area);
+    if (!lga) { //this is to ensure lga is passed correctly from detectSuburb.ts for projects topic as the dataset is lga level.
+    throw new Error('route.ts error - LGA is required for project insights but is missing');
+  }
+    finalReply = await answerNewProjects(area, lga);
   } else if (topic === 'profile') {
     finalReply = `Great! You requested a detailed profile for ${area}. Right now, we haven't implemented full profile yet...`;
   } else if (topic === 'compare') {
