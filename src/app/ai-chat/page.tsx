@@ -25,8 +25,8 @@ export default function AIChatPage() {
   const [input, setInput] = useState('');
   const [copiedUuid, setCopiedUuid] = useState<string | null>(null); // ✅ for tracking copied message
   const [isTyping, setIsTyping] = useState(false); //AI typing animation. 
-  // 🆕 Ref for auto-scroll
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]); // 🆕 suggestions state
+  const bottomRef = useRef<HTMLDivElement | null>(null); // 🆕 Ref for auto-scroll
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,14 +62,18 @@ export default function AIChatPage() {
     setTimeout(() => setCopiedUuid(null), 2000);
   };
 
-  async function sendMessage() {
-    if (!input.trim()) return;
+ // 🆕 Send suggestion as new message
+  const handleSuggestionClick = async (suggestion: string) => {
+    console.log('[DEBUG-SUGGESTION] User clicked suggestion:', suggestion);
+    setInput(suggestion);
+    await sendMessage(suggestion);
+  };
 
-    // Append the new user message with correct type
-    const updatedMessages: Message[] = [
-      ...messages,
-      { role: 'user', content: input }
-    ];
+  async function sendMessage(msg?: string) {
+    const messageToSend = msg || input;
+    if (!messageToSend.trim()) return;
+
+    const updatedMessages: Message[] = [...messages, { role: 'user', content: messageToSend }];
     setMessages(updatedMessages);
 
     
@@ -100,6 +104,9 @@ setMessages([
     uuid: data.uuid,
   },
 ]);
+
+    // 🆕 Update suggestions from backend
+    setSuggestions(data.suggestions || []);
 
     setInput('');
   }
@@ -208,6 +215,22 @@ setMessages([
   <div ref={bottomRef} />
         </div>    
 
+        {/* 🆕 Suggestions Buttons Block */}
+        {suggestions.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {suggestions.map((sug, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSuggestionClick(sug)}
+                className="px-3 py-1 text-xs bg-gray-100 border border-gray-300 rounded-full hover:bg-blue-100 transition"
+              >
+                {sug}
+              </button>
+            ))}
+          </div>
+        )}
+
+
 {/* Message Input */}
       {/* 👈 closing tag for messages container */}
 
@@ -227,7 +250,7 @@ setMessages([
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
         />
         <button
-          onClick={sendMessage}
+          onClick={() => sendMessage()}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
         >
           Send
