@@ -50,8 +50,6 @@ if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis
       result = await answerCrimeStats(suburb);
     } else if (questionAnalysis.topic === "price") {
       result = await answerMedianPrice(suburb);
-    } else if (questionAnalysis.topic === "yield") {
-      result = await answerRentalYield(suburb);
     } else {
       result = `I don't yet support "${questionAnalysis.topic}" data.`;
     }
