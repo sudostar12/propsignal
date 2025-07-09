@@ -12,6 +12,7 @@ export type UserContext = {
     lga: string;
     state: string;
     }>
+  pendingTopic?: string; // ✅ New field for clarification topic
 };
 
 let sessionContext: UserContext = {};

@@ -6,19 +6,19 @@ import { supabase } from '@/lib/supabaseClient';
 // =======================
 // [DEBUG-RY1] Answer Rental Yield Function
 // =======================
-export async function answerRentalYield(suburb: string) {
-  console.log('[DEBUG-RY1.1] Fetching latest rental data for suburb:', suburb);
+export async function answerRentalYield(lga: string) {
+  console.log('[DEBUG-RY1.1] Fetching latest rental data for suburb:', lga);
 
   const { data, error } = await supabase
-    .from("rental_stats")
+    .from("median_rentals")
     .select("*")
-    .eq("suburb", suburb)
+    .eq("lga", lga)
     .order("year", { ascending: false })
     .limit(1);
 
   if (error || !data || data.length === 0) {
     console.error('[ERROR-RY1.1] No rental data found:', error);
-    return `Sorry, I couldn't find rental yield data for ${suburb}.`;
+    return `Sorry, I couldn't find rental yield data for ${lga}.`;
   }
 
   const latest = data[0];
@@ -28,6 +28,6 @@ export async function answerRentalYield(suburb: string) {
     ? `${latest.rentalYield}%`
     : 'unknown yield';
 
-  return `In ${latest.year}, the estimated rental yield in ${suburb} was ${yieldFormatted}. Need further breakdown by property type or comparisons? Just ask!`;
+  return `In ${latest.year}, the estimated rental yield in ${lga} was ${yieldFormatted}. Need further breakdown by property type or comparisons? Just ask!`;
 }
 
