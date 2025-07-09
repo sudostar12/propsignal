@@ -149,7 +149,7 @@ setMessages([
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: 'easeOut', delay: 0.12 * i }}
+        transition={{ duration: 0.2, ease: 'easeOut', delay: 0.2 * i }}
         className="flex justify-start"
       >
         <div className="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-sm max-w-xs md:max-w-md whitespace-pre-wrap">
