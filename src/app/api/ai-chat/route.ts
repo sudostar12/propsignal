@@ -199,7 +199,7 @@ if (area) {
   } else if (topic === 'crime') {
     finalReply = await answerCrimeStats(area);
   } else if (topic === 'yield') {
-    finalReply = await answerRentalYield(area);
+    finalReply = await answerRentalYield(area, lga);
   } else if (topic === 'price_growth') {
     finalReply = await answerPriceGrowth(area, questionAnalysis.years || 3);
   } else if (topic === 'projects') {

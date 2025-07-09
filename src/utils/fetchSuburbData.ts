@@ -188,7 +188,7 @@ export async function fetchRentals(lga: string) {
   try {
     // OPTIMIZED: Only get last 5 years and specific bedroom configurations
     const currentYear = new Date().getFullYear();
-    const startYear = currentYear - 4; // Last 5 years
+    const startYear = currentYear - 3; // Last 3 years
     
     console.log('[DEBUG fetchSuburbData] fetchRentals - Filtering for years:', startYear, 'to', currentYear);
     console.log('[DEBUG fetchSuburbData] fetchRentals - Target bedrooms: Houses (3BHK, 4BHK), Units (2BHK)');
@@ -197,7 +197,7 @@ export async function fetchRentals(lga: string) {
       .from('median_rentals')
       .select('*')
       .ilike('lga', `%${lga}%`)
-      .gte('year', startYear) // Only last 5 years
+      .gte('year', startYear) // Only last 3 years
       .or(
         // Houses: 3BHK and 4BHK only
         'and(propertyType.ilike.%house%,bedroom.in.("3BHK","4BHK")),' +
