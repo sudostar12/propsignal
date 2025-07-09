@@ -109,7 +109,7 @@ else {
     }
   }
 
-  if (!area) {
+    if (!area && topic !== "general") {
     const suburbDetection = await detectSuburb(userInput);
 
     if (suburbDetection.needsClarification && suburbDetection.multipleMatches) {
@@ -141,15 +141,13 @@ else {
       updateContext({ suburb: area, lga, state, clarificationOptions: [] });
     }
   }
-
-  if (area) {
-    updateContext({
-  suburb: area,
-  lga: lga ?? undefined,
-  state: state ?? undefined,
-  clarificationOptions: []
-});
-  }
+if (area) {
+  updateContext({
+    suburb: area,
+    lga: lga ?? undefined,
+    state: state ?? undefined
+  });
+}
 
   console.log('[DEBUG route.ts] Current context:', getContext());
 }
@@ -171,33 +169,35 @@ if (area) {
     console.log('[DEBUG route.ts] Found LGA:', lga, 'State:', state);
   }
 
-      if (area) {
-        updateContext({ suburb: area });
-      }
+  updateContext({ suburb: area, lga: lga ?? undefined, state: state ?? undefined });
 
-      const context = getContext();
-      console.log('[DEBUG route.ts] Current context:', context);
+  console.log('[DEBUG route.ts] Current context:', getContext());
 
-      
-      if (topic === 'price' && area) {
-        finalReply = await answerMedianPrice(area);
-      } else if (topic === 'crime' && area) {
-        finalReply = await answerCrimeStats(area);
-      } else if (topic === 'yield' && area) {
-        finalReply = await answerRentalYield(area);
-      }  else if (topic === 'price_growth' && area) {
-        finalReply = await answerPriceGrowth(area, questionAnalysis.years || 5);
-      } else if (topic === 'projects' && area) {
-        finalReply = await answerNewProjects(area);
-      } else if (topic === 'profile' && area) {
-        finalReply = `Great! You requested a detailed profile for ${area}. Right now, we haven't implemented full profile in this new flow yet, but it's coming soon! Meanwhile, feel free to ask about prices, crime, rental yield, or other specific insights.`;
-      } else if (topic === 'compare') {
-        finalReply = `Comparison queries are coming soon! You can meanwhile ask individual suburb questions.`;
-      } else {
-        finalReply = await generateGeneralReply(messages, topic);
-        isVague = true;
-      }
-    }
+  if (topic === 'price') {
+    finalReply = await answerMedianPrice(area);
+  } else if (topic === 'crime') {
+    finalReply = await answerCrimeStats(area);
+  } else if (topic === 'yield') {
+    finalReply = await answerRentalYield(area);
+  } else if (topic === 'price_growth') {
+    finalReply = await answerPriceGrowth(area, questionAnalysis.years || 5);
+  } else if (topic === 'projects') {
+    finalReply = await answerNewProjects(area);
+  } else if (topic === 'profile') {
+    finalReply = `Great! You requested a detailed profile for ${area}. Right now, we haven't implemented full profile yet...`;
+  } else if (topic === 'compare') {
+    finalReply = `Comparison queries are coming soon!`;
+  } else {
+    // ⚠️ fallback still inside — needs to be outside if area exists but topic is general
+    finalReply = await generateGeneralReply(messages, topic);
+    isVague = true;
+  }
+} else {
+  // 💥 If no area, handle general fallback
+  finalReply = await generateGeneralReply(messages, topic);
+  isVague = true;
+}
+
 
  // ===============================
     // ✅ Central Logging Block
