@@ -43,19 +43,20 @@ if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis
 
   const results: string[] = [];
 
-  for (const suburb of questionAnalysis.targetAreas) {
-    let result = "";
+for (const suburb of questionAnalysis.targetAreas) {
+  let result = "";
 
-    if (questionAnalysis.topic === "crime") {
-      result = await answerCrimeStats(suburb);
-    } else if (questionAnalysis.topic === "price") {
-      result = await answerMedianPrice(suburb);
-    } else {
-      result = `I don't yet support "${questionAnalysis.topic}" data.`;
-    }
-
-    results.push(`**${suburb}:** ${result}`);
+  if (questionAnalysis.topic === "crime") {
+    result = await answerCrimeStats(suburb);
+  } else if (questionAnalysis.topic === "price") {
+    result = await answerMedianPrice(suburb);
+  } else {
+    result = `I don't yet support "${questionAnalysis.topic}" data.`;
   }
+
+  results.push(`**${suburb}:** ${result}`);
+}
+
 
         finalReply = `Here's a side-by-side comparison:\n\n${results.join("\n\n")}`;
     }

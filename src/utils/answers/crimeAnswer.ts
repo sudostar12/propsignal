@@ -1,29 +1,62 @@
-// src/utils/crimeAnswer.ts
+import { fetchCrime } from "@/utils/fetchSuburbData";
+import { getContext } from "@/utils/contextManager";
 
-//import { fetchMedianPrice, fetchCrime, fetchRentals } from '@/utils/fetchSuburbData';
-import { supabase } from '@/lib/supabaseClient';
+export async function answerCrimeStats(suburb: string): Promise<string> {
+  console.log("[DEBUG-RY1] Fetching crime data for suburb:", suburb);
 
+  const context = getContext();
+  const nearbySuburbs = context.nearbySuburbs || [];
 
-// =======================
-// [DEBUG-F4.1] Answer Crime Stats Function
-// =======================
-export async function answerCrimeStats(suburb: string) {
-  console.log('[DEBUG-F4.1] Fetching latest crime data for suburb:', suburb);
+  const { suburbData, error } = await fetchCrime(suburb);
 
-  const { data, error } = await supabase
-    .from("crime_stats")
-    .select("*")
-    .eq("suburb", suburb)
-    .order("year", { ascending: false })
-    .limit(1);
-
-  if (error || !data || data.length === 0) {
-    console.error('[ERROR-F4.1] No crime data found:', error);
+  if (error || !suburbData || suburbData.length === 0) {
+    console.error('[ERROR-RY1] No crime data found for:', suburb);
     return `Sorry, I couldn't find crime data for ${suburb}.`;
   }
 
-  const latest = data[0];
-  console.log('[DEBUG-F4.1] Latest crime data found:', latest);
+  const latest = suburbData[suburbData.length - 1];
+  const prev = suburbData[suburbData.length - 2];
 
-  return `In ${latest.year}, ${suburb} reported ${latest.offenceCount} offences. Let me know if you'd like to explore trends or compare with other suburbs.`;
+let trendMsg = "";
+
+if (prev && latest.offenceCount && prev.offenceCount) {
+  const changePercent = ((latest.offenceCount - prev.offenceCount) / prev.offenceCount) * 100;
+  const rounded = changePercent.toFixed(1);
+
+  if (changePercent > 5) {
+    trendMsg = `⬆️ Increased by ${rounded}% compared to last year.`;
+  } else if (changePercent < -5) {
+    trendMsg = `⬇️ Decreased by ${Math.abs(Number(rounded))}% compared to last year.`;
+  } else {
+    trendMsg = `⚖️ Relatively stable (±5%) compared to last year.`;
+  }
+}
+
+
+  // 💡 Build nearby suburbs message
+  const nearbyResults: string[] = [];
+  for (const nbSuburb of nearbySuburbs.slice(0, 2)) {
+    const { suburbData: nbData } = await fetchCrime(nbSuburb);
+    if (nbData && nbData.length > 0) {
+      const nbLatest = nbData[nbData.length - 1];
+      nearbyResults.push(`• ${nbSuburb}: ${nbLatest.offenceCount} offences in ${nbLatest.year}`);
+    } else {
+      nearbyResults.push(`• ${nbSuburb}: data not available`);
+    }
+  }
+
+const nearbyMsg = nearbyResults.length
+  ? `\n\n🏘️ **Nearby suburbs perspective:**\n${nearbyResults.join('\n')}`
+  : "\n\n🏘️ No nearby suburb data found.";
+
+const finalMsg = `🔎 **Crime Snapshot for ${suburb}**
+
+🗓️ **Year**: ${latest.year}
+🚨 **Reported Offences**: ${latest.offenceCount}
+📈 **Trend**: ${trendMsg}${nearbyMsg}
+
+💬 Let me know if you'd like to see offence breakdowns, more trends, or deeper comparisons!`;
+
+return finalMsg;
+
 }

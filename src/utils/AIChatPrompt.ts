@@ -194,7 +194,6 @@ One compelling sentence about ${possible_suburb}'s investment or lifestyle appea
 ### Future Growth Drivers
 **IMPORTANT: Use the household forecast data to provide AI-driven analysis:**
 - Analyze household growth forecasts across the 5-year intervals (2021→2026→2031→2036) to predict property demand
-- Use the specific Victorian Government forecast data showing different household compositions
 - Identify which household types (families vs singles vs couples) are growing fastest over the 15-year period
 - Connect household growth patterns to property investment opportunities (houses vs units)
 - Calculate how household demand growth translates to property value potential

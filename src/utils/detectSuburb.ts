@@ -3,6 +3,7 @@
 import OpenAI from 'openai';
 import { supabase } from '@/lib/supabaseClient';
 import { detectUserIntent } from '@/utils/detectIntent';
+import { updateContext } from "@/utils/contextManager";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -136,14 +137,41 @@ const { data: allSuburbs, error } = await supabase
     // Single match - perfect!
     const exactMatch = allMatches[0];
     console.log('[DEBUG] detectSuburb - Single exact match found: Suburb:',exactMatch.suburb,', LGA:',exactMatch.lga,', State:',exactMatch.state);
-    return {
-      possible_suburb: exactMatch.suburb,
-      confidence: 0.95,
+    
+    const suburbName = exactMatch.suburb;
+  const lgaName = exactMatch.lga;
+
+  // Query other suburbs in same LGA
+  const { data: nearbySuburbs, error } = await supabase
+    .from('lga_suburbs')
+    .select('suburb')
+    .eq('lga', lgaName)
+    .neq('suburb', suburbName)
+    .limit(5);
+
+  if (error) {
+    console.error('[ERROR detectSuburb] Failed to load nearby suburbs:', error);
+  } else {
+    const nearbyList = nearbySuburbs?.map(s => s.suburb) || [];
+    console.log('[DEBUG detectSuburb] Nearby suburbs in same LGA:', nearbyList);
+
+    // Update context with detected suburb and nearby suburbs
+    updateContext({
+      suburb: suburbName,
       lga: exactMatch.lga,
       state: exactMatch.state,
-      needsClarification: false
-    };
-  } else {
+      nearbySuburbs: nearbyList
+    });
+  }
+
+  return {
+    possible_suburb: suburbName,
+    confidence: 0.95,
+    lga: exactMatch.lga,
+    state: exactMatch.state,
+    needsClarification: false
+  };
+} else {
     // Multiple matches - ask user to clarify
     console.log('[DEBUG] detectSuburb - Multiple matches found, need user clarification');
     return {
@@ -156,6 +184,8 @@ const { data: allSuburbs, error } = await supabase
     };
   }
 }
+
+
 
 // Helper function to normalize suburb names for comparison
 function normalizeSuburbName(name: string): string {

@@ -186,7 +186,7 @@ export async function fetchRentals(lga: string) {
   console.log('[DEBUG fetchSuburbData] fetchRentals - Searching for LGA:', lga);
   
   try {
-    // OPTIMIZED: Only get last 5 years and specific bedroom configurations
+    // OPTIMIZED: Only get last 3 years and specific bedroom configurations
     const currentYear = new Date().getFullYear();
     const startYear = currentYear - 3; // Last 3 years
     
@@ -226,7 +226,7 @@ export async function fetchRentals(lga: string) {
       console.log('  - Sample data:', data[0]);
     }
     
-    console.log('[DEBUG fetchSuburbData] fetchRentals - Final results:', data?.length || 0, 'records found (last 5 years, targeted bedrooms)');
+    console.log('[DEBUG fetchSuburbData] fetchRentals - Final results:', data?.length || 0, 'records found (last 3 years, targeted bedrooms)');
     return { data, error: null };
     
   } catch (err) {
@@ -258,17 +258,18 @@ export async function fetchProjects(lga: string) {
   }
 }
 
-export async function fetchCrime(suburb: string) {
+export async function fetchCrime(suburb: string, lga?: string | null) 
+{
   console.log('[DEBUG fetchSuburbData] fetchCrime - Searching for suburb:', suburb);
   
   try {
     // OPTIMIZED: Only get recent years and specific columns
     const currentYear = new Date().getFullYear();
-    const startYear = currentYear - 4; // Last 5 years
+    const startYear = currentYear - 2; // Last 3 years (curent, prev, prev-prev)
     
     console.log('[DEBUG fetchSuburbData] fetchCrime - Filtering for years:', startYear, 'to', currentYear);
     
-    let { data, error } = await supabase
+    let { data: suburbData, error: suburbError } = await supabase
       .from('crime_stats')
       .select('offenceCount, year, suburb') // Only needed columns
       .eq('suburb', suburb)
@@ -276,8 +277,9 @@ export async function fetchCrime(suburb: string) {
       .gte('year', startYear) // Only recent years
       .order('year', { ascending: true });
     
-    console.log('[DEBUG fetchSuburbData] fetchCrime - Exact match results:', data?.length || 0, 'records');
-    
+    console.log('[DEBUG fetchSuburbData] fetchCrime - Exact match results:', suburbData?.length || 0, 'records');
+
+    /* To be DELETED - as the case-insensitive suburb logic is in detectSuburb.ts 
     // Try case-insensitive if no exact match
     if (!data || data.length === 0) {
       console.log('[DEBUG fetchSuburbData] fetchCrime - Trying case-insensitive match...');
@@ -309,25 +311,40 @@ export async function fetchCrime(suburb: string) {
       error = result.error;
       console.log('[DEBUG fetchSuburbData] fetchCrime - Partial match results:', data?.length || 0, 'records');
     }
+      */
     
-    if (error) {
-      console.error('[ERROR] fetchCrime - Database error:', error);
-      return { data: null, error };
+    if (suburbError) {
+      console.error('[ERROR fetchCrime] - Suburb error:', suburbError);
+      return { suburbData: null, nearbyData: null, error: suburbError };
     }
-    
+    /* - temp commented out pending testing. 
+    // --- Fetch other suburbs in same LGA, only latest year ---
+  const { data: nearbyData, error: nearbyError } = await supabase
+    .from('crime_stats')
+    .select('offenceCount, year, suburb')
+   // .eq('lga', lga) - this can be re-added once lga column is added to table. useful for nearby suburb crime stats based on lga. 
+    .eq('year', currentYear)
+    .neq('suburb', suburb)
+    .limit(5);
+
+  if (nearbyError) {
+    console.error('[ERROR fetchCrime] Nearby error:', nearbyError);
+    return { suburbData, nearbyData, error: suburbError || nearbyError };
+}
+*/
     // Log sample data for debugging
-    if (data && data.length > 0) {
-      console.log('[DEBUG fetchSuburbData] fetchCrime - Sample record:', data[0]);
+    if (suburbData && suburbData.length > 0) {
+      console.log('[DEBUG fetchSuburbData] fetchCrime - Sample record:', suburbData[0]);
       // FIXED: Get unique years with proper typing
-      const years = Array.from(new Set(data.map((d: { year?: number }) => d.year).filter(Boolean))).sort();
+      const years = Array.from(new Set(suburbData.map((d: { year?: number }) => d.year).filter(Boolean))).sort();
       console.log('[DEBUG fetchSuburbData] fetchCrime - Years available:', years);
       // FIXED: Reduce function with proper typing
-      const totalOffences = data.reduce((sum: number, d: { offenceCount?: number }) => sum + (d.offenceCount || 0), 0);
+      const totalOffences = suburbData.reduce((sum: number, d: { offenceCount?: number }) => sum + (d.offenceCount || 0), 0);
       console.log('[DEBUG fetchSuburbData] fetchCrime - Total offences across all years:', totalOffences);
     }
     
-    console.log('[DEBUG fetchSuburbData] fetchCrime - Final results:', data?.length || 0, 'records found (last 5 years)');
-    return { data, error: null };
+    console.log('[DEBUG fetchSuburbData] fetchCrime - Final results:', suburbData?.length || 0, 'records found (last 5 years)');
+    return { suburbData, error: null };
     
   } catch (err) {
     console.error('[ERROR] fetchCrime - Exception:', err);

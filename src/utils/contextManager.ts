@@ -13,6 +13,7 @@ export type UserContext = {
     state: string;
     }>
   pendingTopic?: string; // ✅ New field for clarification topic
+  nearbySuburbs?: string[];
 };
 
 let sessionContext: UserContext = {};
