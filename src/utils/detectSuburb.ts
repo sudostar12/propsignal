@@ -135,7 +135,7 @@ const { data: allSuburbs, error } = await supabase
   } else if (allMatches.length === 1) {
     // Single match - perfect!
     const exactMatch = allMatches[0];
-    console.log('[DEBUG] detectSuburb - Single exact match found:', exactMatch.suburb);
+    console.log('[DEBUG] detectSuburb - Single exact match found: Suburb:',exactMatch.suburb,', LGA:',exactMatch.lga,', State:',exactMatch.state);
     return {
       possible_suburb: exactMatch.suburb,
       confidence: 0.95,
@@ -242,7 +242,7 @@ function tryFuzzyMatching(normalizedExtracted: string, originalExtracted: string
   
   // Single fuzzy match
   const bestMatch = bestMatchSuburbs[0];
-  console.log('[DEBUG] detectSuburb - Best fuzzy match:', bestMatch.suburb);
+  console.log('[DEBUG] detectSuburb - Best fuzzy match: Best Match Suburb:', bestMatch.suburb,  'Best Match LGA:',bestMatch.lga,', Best Match State:',bestMatch.state);
   
   const result = {
     possible_suburb: bestMatch.suburb,
