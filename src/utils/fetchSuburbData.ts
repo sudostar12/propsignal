@@ -258,7 +258,7 @@ export async function fetchProjects(lga: string) {
   }
 }
 
-export async function fetchCrime(suburb: string, lga?: string | null) 
+export async function fetchCrime(suburb: string) 
 {
   console.log('[DEBUG fetchSuburbData] fetchCrime - Searching for suburb:', suburb);
   
@@ -269,7 +269,7 @@ export async function fetchCrime(suburb: string, lga?: string | null)
     
     console.log('[DEBUG fetchSuburbData] fetchCrime - Filtering for years:', startYear, 'to', currentYear);
     
-    let { data: suburbData, error: suburbError } = await supabase
+    const { data: suburbData, error: suburbError } = await supabase
       .from('crime_stats')
       .select('offenceCount, year, suburb') // Only needed columns
       .eq('suburb', suburb)
