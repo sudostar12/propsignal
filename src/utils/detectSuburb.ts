@@ -3,7 +3,7 @@
 import OpenAI from 'openai';
 import { supabase } from '@/lib/supabaseClient';
 import { detectUserIntent } from '@/utils/detectIntent';
-import { updateContext } from "@/utils/contextManager";
+//import { updateContext } from "@/utils/contextManager";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -92,7 +92,7 @@ const { data: allSuburbs, error } = await supabase
   console.log('[DEBUG detectSuburb] - Loaded', allSuburbs?.length || 0, 'suburbs from database');
   
   if (!allSuburbs || allSuburbs.length === 0) {
-    console.error('[ERROR] No suburbs loaded from database');
+    console.error('[ERROR detectSuburb] No suburbs loaded from database');
     return {
       possible_suburb: null,
       confidence: 0,
@@ -143,7 +143,7 @@ const { data: allSuburbs, error } = await supabase
   const lgaName = exactMatch.lga;
 
   // Query other suburbs in same LGA
-  let nearbyList: string[] = [];
+  const nearbyList: string[] = [];
   const { data: nearbySuburbs, error } = await supabase
     .from('lga_suburbs')
     .select('suburb')
