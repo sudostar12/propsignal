@@ -116,7 +116,7 @@ else {
         options: suburbDetection.multipleMatches
       });
     }
-      // ✅ New block: handle no suburb found
+      // ✅ AI fallback to handle no suburb found
 if (!suburbDetection.possible_suburb && !suburbDetection.needsClarification) {
   console.log('[DEBUG route.ts] No suburb detected, using AI fallback clarification');
 
@@ -164,14 +164,18 @@ if (context.pendingTopic) {
   });
 }
 
-if ((topic === "yield" || topic === "projects") && !lga) {
-  throw new Error('route.ts error - LGA is required but missing.');
-}
 
-const currentContext = getContext(); // ✅ Declare once, here
+const currentContext = getContext();
 
 if (!area && currentContext.suburb) {
   area = currentContext.suburb;
+}
+if (!lga && currentContext.lga) {
+  lga = currentContext.lga;
+}
+
+if ((topic === "yield" || topic === "projects") && !lga) {
+  throw new Error('route.ts error - LGA is required but missing.');
 }
 
 console.log('[DEBUG route.ts] Topic value:', topic, ', Area value:', area);
@@ -193,9 +197,28 @@ const topicHandlers: Record<string, () => Promise<string>> = {
 if (area && topicHandlers[topic]) {
   finalReply = await topicHandlers[topic]();
 } else if (topic === 'profile') {
-  finalReply = `Great! You requested a detailed profile for ${area}. Right now, we haven't implemented full profile yet...`;
+  finalReply = `Great question! Our full suburb profile feature is currently being developed — it will include details like lifestyle insights, local amenities, and growth trends to help you make informed decisions.
+
+In the meantime, here are a few things you can ask about ${area}:
+• "What is the median price in ${area}?"
+• "Tell me the rental yield for ${area}."
+• "Show me price growth trends in ${area}."
+• "Are there any new projects in ${area}?"
+• "What are the crime stats for ${area}?"
+
+Just type one of these, or ask about anything else you'd like to explore!`;
 } else if (topic === 'compare') {
-  finalReply = `Comparison queries are coming soon!`;
+  finalReply = `Thanks for your question! Our suburb comparison feature is currently being developed — it will let you easily compare ${area} with other suburbs on price trends, rental yields, and more.
+
+While we're building this, you can still explore detailed insights on individual suburbs, one at a time. Here are some example prompts you can try:
+• "What is the median price in ${area}?"
+• "Tell me the rental yield for ${area}."
+• "Show me price growth trends in ${area}."
+• "Are there any new projects in ${area}?"
+• "What are the crime stats for ${area}?"
+
+Feel free to ask about any of these, or anything else you'd like to explore about ${area}!`;
+
 } else {
   finalReply = await generateGeneralReply(messages, topic);
   isVague = true;

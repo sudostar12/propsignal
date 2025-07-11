@@ -1,20 +1,20 @@
-// Complete detectSuburb implementation with all imports
+// Complete detectSuburb implementation with all imports and fixed type definitions
 
 import OpenAI from 'openai';
 import { supabase } from '@/lib/supabaseClient';
 import { detectUserIntent } from '@/utils/detectIntent';
-//import { updateContext } from "@/utils/contextManager";
+
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// Type definitions
-interface SuburbData {
+// Type definitions - moved to top and exported for better visibility
+export interface SuburbData {
   suburb: string;
   lga: string;
   state: string;
 }
 
-interface DetectionResult {
+export interface DetectionResult {
   possible_suburb: string | null;
   confidence: number;
   lga?: string;
@@ -23,28 +23,37 @@ interface DetectionResult {
   multipleMatches?: SuburbData[];
   extractedSuburb?: string;
   message?: string;
-  isFuzzyMatch?: boolean;
   nearbySuburbs?: string[];
 }
 
-// Main detection function
+// Additional interface for handler return type
+export interface SuburbDetectionResponse {
+  action: 'ASK_USER' | 'PROCEED' | 'NOT_FOUND';
+  options?: SuburbData[];
+  message?: string;
+  suburb?: string;
+  state?: string;
+  lga?: string;
+}
+
+// Main detection function - now with proper return type
 export async function detectSuburb(input: string): Promise<DetectionResult> {
   console.log('[DEBUG detectSuburb] detectSuburb - Starting suburb detection for input:', input);
 
   const intent = await detectUserIntent(input);
-console.log('[DEBUG detectSuburb] Detected intent:', intent);
+  console.log('[DEBUG detectSuburb] Detected intent:', intent);
 
-/*
-if (intent !== 'suburb') {
-  console.log('[DEBUG] Intent is not suburb — skipping suburb extraction');
-    
- return {
-  possible_suburb: null,
-  confidence: 0,
-  needsClarification: false,
-  message: "I couldn't detect a suburb in your message." // optional fallback
-};
-}
+  /*
+  if (intent !== 'suburb') {
+    console.log('[DEBUG] Intent is not suburb — skipping suburb extraction');
+      
+   return {
+    possible_suburb: null,
+    confidence: 0,
+    needsClarification: false,
+    message: "I couldn't detect a suburb in your message." // optional fallback
+  };
+  }
   */ //temp exclusion for testing suburb logging. 
 
   console.log('[DEBUG detectSuburb] Detected intent:', intent);
@@ -54,33 +63,31 @@ if (intent !== 'suburb') {
   const extractedSuburb = await extractSuburbUsingAI(input);
   console.log('[DEBUG detectSuburb] - AI extracted suburb:', extractedSuburb);
   
-  // Check if the AI extrated suburb is valid
+  // Check if the AI extracted suburb is valid
   if (!extractedSuburb || extractedSuburb.length < 2) {
-  console.log('[DEBUG detectSuburb] - AI could not extract a valid suburb. Skipping DB lookup.');
-  return {
-    possible_suburb: null,
-    confidence: 0,
-    needsClarification: true,
-    message: 'Sorry, I could not detect a suburb in your question. Could you please provide it?'
-  };
-}
-  // Get the the first three letters of the AI generated suburb
+    console.log('[DEBUG detectSuburb] - AI could not extract a valid suburb. Skipping DB lookup.');
+    return {
+      possible_suburb: null,
+      confidence: 0,
+      needsClarification: true,
+      message: 'Sorry, I could not detect a suburb in your question. Could you please provide it?'
+    };
+  }
+
+  // Get the first three letters of the AI generated suburb
   const firstThreeLetters = extractedSuburb.slice(0, 3).toLowerCase();
   console.log('[DEBUG detectSuburb] First 3 letters of extracted suburb:', firstThreeLetters);
 
-
-
   // Step 2: Load suburbs from database
-const { data: allSuburbs, error } = await supabase
-  .from('lga_suburbs')
-  .select('suburb, lga, state')
-  .ilike('suburb', `${firstThreeLetters}%`)
-  .order('suburb')
-  .limit(100); // limit to 100 for safety; adjust if needed
+  const { data: allSuburbs, error } = await supabase
+    .from('lga_suburbs')
+    .select('suburb, lga, state')
+    .ilike('suburb', `${firstThreeLetters}%`)
+    .order('suburb')
+    .limit(100); // limit to 100 for safety; adjust if needed
 
-  
   if (error) {
-    console.error('[ERROR] Failed to load suburbs:', error);
+    console.error('[ERROR detectSuburb] Failed to load suburbs:', error);
     return {
       possible_suburb: null,
       confidence: 0,
@@ -105,78 +112,59 @@ const { data: allSuburbs, error } = await supabase
   const normalizedExtracted = normalizeSuburbName(extractedSuburb);
   console.log('[DEBUG detectSuburb] - Normalized extracted suburb:', normalizedExtracted);
   
-  // Step 5: Find exact matches with normalized comparison
-  console.log('[DEBUG detectSuburb] - Looking for matches for:', normalizedExtracted);
-
-  // Step 5: Find exact matches with normalized comparison
-  console.log('[DEBUG detectSuburb] - Looking for matches for:', normalizedExtracted);
-  
   const allMatches = allSuburbs.filter(s => {
     const normalizedDb = normalizeSuburbName(s.suburb);
     const isMatch = normalizedDb === normalizedExtracted;
-    
-   /* // Extra debug for Box Hill - delete after testing. 
-    if (normalizedExtracted === 'box hill' && s.suburb.toLowerCase().includes('box')) {
-      console.log(`[DEBUG] Comparing DB: "${s.suburb}" (normalized: "${normalizedDb}") with extracted: "${extractedSuburb}" (normalized: "${normalizedExtracted}") - Match: ${isMatch}`);
-    }
-  */
-
     return isMatch;
   });
-  
   
   console.log('[DEBUG detectSuburb] - Found matches:', 
     allMatches.map(s => `${s.suburb} (${s.lga}, ${s.state})`)
   );
   
-  // Step 6: Handle results based on number of matches
+  // Step 4: Handle results based on number of matches
   if (allMatches.length === 0) {
     console.log('[DEBUG detectSuburb] - No exact matches found');
-    // Try fuzzy matching
-    return tryFuzzyMatching(normalizedExtracted, extractedSuburb, allSuburbs);
+    // For now, return no match found (fuzzy matching is commented out)
+    return {
+      possible_suburb: null,
+      confidence: 0,
+      needsClarification: false,
+      message: `I couldn't find a suburb matching "${extractedSuburb}". Please check the spelling or try a different suburb.`
+    };
   } else if (allMatches.length === 1) {
     // Single match - perfect!
     const exactMatch = allMatches[0];
-    console.log('[DEBUG detectSuburb] - Single exact match found: Suburb:',exactMatch.suburb,', LGA:',exactMatch.lga,', State:',exactMatch.state);
+    console.log('[DEBUG detectSuburb] - Single exact match found: Suburb:', exactMatch.suburb, ', LGA:', exactMatch.lga, ', State:', exactMatch.state);
     
     const suburbName = exactMatch.suburb;
-  const lgaName = exactMatch.lga;
+    const lgaName = exactMatch.lga;
 
-  // Query other suburbs in same LGA
-  const nearbyList: string[] = [];
-  const { data: nearbySuburbs, error } = await supabase
-    .from('lga_suburbs')
-    .select('suburb')
-    .eq('lga', lgaName)
-    .neq('suburb', suburbName)
-    .limit(5);
+    // Query other suburbs in same LGA
+    let nearbyList: string[] = [];
+    const { data: nearbySuburbs, error: nearbyError } = await supabase
+      .from('lga_suburbs')
+      .select('suburb')
+      .eq('lga', lgaName)
+      .neq('suburb', suburbName)
+      .limit(5);
 
-  if (error) {
-    console.error('[ERROR detectSuburb] Failed to load nearby suburbs:', error);
-  } else {
-    const nearbyList = nearbySuburbs?.map(s => s.suburb) || [];
-    console.log('[DEBUG detectSuburb] Nearby suburbs in same LGA:', nearbyList);
+    if (nearbyError) {
+      console.error('[ERROR detectSuburb] Failed to load nearby suburbs:', nearbyError);
+    } else {
+      nearbyList = nearbySuburbs?.map(s => s.suburb) || [];
+      console.log('[DEBUG detectSuburb] Nearby suburbs in same LGA:', nearbyList);
+    }
 
-   /*
-    // Update context with detected suburb and nearby suburbs
-    updateContext({
-      suburb: suburbName,
+    return {
+      possible_suburb: suburbName,
+      confidence: 0.95,
       lga: exactMatch.lga,
       state: exactMatch.state,
+      needsClarification: false,
       nearbySuburbs: nearbyList
-    });
-    */
-  }
-
-  return {
-    possible_suburb: suburbName,
-    confidence: 0.95,
-    lga: exactMatch.lga,
-    state: exactMatch.state,
-    needsClarification: false,
-    nearbySuburbs: nearbyList
-  };
-} else {
+    };
+  } else {
     // Multiple matches - ask user to clarify
     console.log('[DEBUG detectSuburb] - Multiple matches found, need user clarification');
     return {
@@ -190,8 +178,6 @@ const { data: allSuburbs, error } = await supabase
   }
 }
 
-
-
 // Helper function to normalize suburb names for comparison
 function normalizeSuburbName(name: string): string {
   if (!name) return '';
@@ -203,120 +189,6 @@ function normalizeSuburbName(name: string): string {
     .replace(/['']/g, "'")          // Normalize apostrophes
     .replace(/\u00A0/g, ' ')        // Replace non-breaking spaces
     .replace(/[^\w\s'-]/g, '');     // Remove special characters except apostrophes and hyphens
-}
-
-// Fuzzy matching function
-function tryFuzzyMatching(normalizedExtracted: string, originalExtracted: string, allSuburbs: SuburbData[]): DetectionResult {
-  console.log('[DEBUG detectSuburb] - No exact match, trying fuzzy matching for:', normalizedExtracted);
-  
-  const fuzzyMatches = allSuburbs.filter(s => {
-    const normalizedDb = normalizeSuburbName(s.suburb);
-    
-    // Skip if it's an exact match (should have been caught earlier)
-    if (normalizedDb === normalizedExtracted) {
-      console.log(`[WARNING detectSuburb] Exact match found in fuzzy matching: "${s.suburb}" - this suggests a normalization issue`);
-      return true;
-    }
-    
-    // Check for partial matches
-    const isPartialMatch = 
-      normalizedDb.includes(normalizedExtracted) ||
-      normalizedExtracted.includes(normalizedDb);
-    
-    // Check Levenshtein distance
-    const distance = calculateLevenshteinDistance(normalizedDb, normalizedExtracted);
-    const isCloseMatch = distance <= 2;
-    
-    return isPartialMatch || isCloseMatch;
-  });
-  
-  console.log('[DEBUG detectSuburb] - Fuzzy matches:', fuzzyMatches.map(s => s.suburb));
-  
-  if (fuzzyMatches.length === 0) {
-    console.log('[DEBUG detectSuburb] AI suburb detection result1: { possible_suburb: null, confidence: 0 }');
-    return {
-      possible_suburb: null,
-      confidence: 0,
-      needsClarification: false,
-      message: `I couldn't find a suburb matching "${originalExtracted}". Please check the spelling or try a different suburb.`
-    };
-  }
-  
-  // Check if we have multiple fuzzy matches for the same suburb name (different states)
-  const uniqueSuburbNames = new Map<string, SuburbData[]>();
-  fuzzyMatches.forEach(match => {
-    const normalized = normalizeSuburbName(match.suburb);
-    if (!uniqueSuburbNames.has(normalized)) {
-      uniqueSuburbNames.set(normalized, []);
-    }
-    uniqueSuburbNames.get(normalized)!.push(match);
-  });
-  
-  // If the best fuzzy match has multiple states, ask for clarification
-  const sortedMatches = Array.from(uniqueSuburbNames.entries()).sort((a, b) => {
-    const distA = calculateLevenshteinDistance(a[0], normalizedExtracted);
-    const distB = calculateLevenshteinDistance(b[0], normalizedExtracted);
-    return distA - distB;
-  });
-  
-  const [/*bestMatchName*/, bestMatchSuburbs] = sortedMatches[0];
-  
-  if (bestMatchSuburbs.length > 1) {
-    // Multiple states for the same suburb
-    console.log('[DEBUG detectSuburb] - Best fuzzy match has multiple states, need clarification');
-    return {
-      possible_suburb: null,
-      confidence: 0.8,
-      needsClarification: true,
-      multipleMatches: bestMatchSuburbs,
-      extractedSuburb: bestMatchSuburbs[0].suburb,
-      isFuzzyMatch: true,
-      message: `Did you mean "${bestMatchSuburbs[0].suburb}"? I found it in ${bestMatchSuburbs.length} states.`
-    };
-  }
-  
-  // Single fuzzy match
-  const bestMatch = bestMatchSuburbs[0];
-  console.log('[DEBUG detectSuburb] - Best fuzzy match: Best Match Suburb:', bestMatch.suburb,  'Best Match LGA:',bestMatch.lga,', Best Match State:',bestMatch.state);
-  
-  const result = {
-    possible_suburb: bestMatch.suburb,
-    confidence: 0.8,
-    lga: bestMatch.lga,
-    state: bestMatch.state,
-    isFuzzyMatch: true,
-    needsClarification: false
-  };
-  
-  console.log('[DEBUG detectSuburb] AI suburb detection result2:', result);
-  return result;
-}
-
-// Levenshtein distance calculation
-function calculateLevenshteinDistance(str1: string, str2: string): number {
-  const m = str1.length;
-  const n = str2.length;
-  
-  if (m === 0) return n;
-  if (n === 0) return m;
-  
-  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-  
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,      // deletion
-        dp[i][j - 1] + 1,      // insertion
-        dp[i - 1][j - 1] + cost // substitution
-      );
-    }
-  }
-  
-  return dp[m][n];
 }
 
 // AI extraction function using OpenAI
@@ -380,9 +252,9 @@ function extractSuburbFallback(input: string): string {
   // Last resort - return empty string
   return '';
 }
-
-// Example usage function
-export async function handleSuburbDetection(userInput: string) {
+/*
+// Example usage function with proper return type
+export async function handleSuburbDetection(userInput: string): Promise<SuburbDetectionResponse> {
   const result = await detectSuburb(userInput);
   
   if (result.needsClarification && result.multipleMatches) {
@@ -401,9 +273,7 @@ export async function handleSuburbDetection(userInput: string) {
     // Found a match (exact or fuzzy)
     console.log(`\n✅ Found suburb: ${result.possible_suburb} (${result.state})`);
     console.log(`   Confidence: ${(result.confidence * 100).toFixed(0)}%`);
-    if (result.isFuzzyMatch) {
-      console.log(`   Note: This was a fuzzy match`);
-    }
+    
     return {
       action: 'PROCEED',
       suburb: result.possible_suburb,
@@ -419,13 +289,13 @@ export async function handleSuburbDetection(userInput: string) {
     };
   }
 }
-
+*/
 // Debug function to check your database
-export async function debugDatabaseSuburbs(searchTerm: string = 'box hill') {
+export async function debugDatabaseSuburbs(searchTerm: string = 'box hill'): Promise<void> {
   console.log('\n=== DATABASE DEBUG ===');
   
   const { data: allSuburbs, error } = await supabase
-    .from('suburbs')
+    .from('lga_suburbs')  // Updated to match your table name
     .select('suburb, lga, state')
     .ilike('suburb', `%${searchTerm.split(' ')[0]}%`);
   
@@ -446,4 +316,3 @@ export async function debugDatabaseSuburbs(searchTerm: string = 'box hill') {
   
   console.log('\n=== END DEBUG ===\n');
 }
-
