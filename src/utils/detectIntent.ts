@@ -7,7 +7,7 @@ export type ChatMessage = {
 };
 
 
-export type UserIntent = 'invest' | 'live' | 'rent' | 'suburb' | 'help' | 'unsure';
+export type UserIntent = 'invest' | 'live' | 'rent' | 'suburb' | 'help' | 'unsure'; //this is likely not used. questionAnalyzer.ts is used instead. - 11/07
 
 export async function detectUserIntent(userInput: string): Promise<UserIntent> {
   try {

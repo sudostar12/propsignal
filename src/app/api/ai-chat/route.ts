@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-//import OpenAI from 'openai';
 import { analyzeUserQuestion } from '@/utils/questionAnalyzer';
 import { updateContext, getContext } from '@/utils/contextManager';
 import { answerCrimeStats } from "@/utils/answers/crimeAnswer";
@@ -11,9 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { answerPriceGrowth } from "@/utils/answers/priceGrowthAnswer";
 import { answerNewProjects } from "@/utils/answers/newProjectsAnswer";
 import { getSuggestionsForTopic } from '@/utils/suggestions';
-
-
-//const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+import { answerMultiSuburbComparison } from "@/utils/answers/multiSuburbAnswer";
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,29 +34,13 @@ export async function POST(req: NextRequest) {
     // ============================
     // [DEBUG-S5.1] MULTI-SUBURB COMPARISON HANDLING
     // ============================
+    // 11/07: suburb comparison can be moved to a seperate file under answers. 
 
 if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis.targetAreas.length > 1) {
   console.log('[DEBUG-route.ts] Multi-suburb comparison requested:', questionAnalysis.targetAreas);
 
-  const results: string[] = [];
-
-for (const suburb of questionAnalysis.targetAreas) {
-  let result = "";
-
-  if (questionAnalysis.topic === "crime") {
-    result = await answerCrimeStats(suburb);
-  } else if (questionAnalysis.topic === "price") {
-    result = await answerMedianPrice(suburb);
-  } else {
-    result = `I don't yet support "${questionAnalysis.topic}" data.`;
-  }
-
-  results.push(`**${suburb}:** ${result}`);
+  finalReply = await answerMultiSuburbComparison(questionAnalysis.targetAreas, questionAnalysis.topic);
 }
-
-
-        finalReply = `Here's a side-by-side comparison:\n\n${results.join("\n\n")}`;
-    }
   
 // ============================
 // [DEBUG-S5.2] MULTI-SUBURB QUERY HANDLING
@@ -72,7 +53,7 @@ else {
   if (context.clarificationOptions && context.clarificationOptions.length > 0) {
     console.log('[DEBUG route.ts] User provided clarification input:', userInput);
 
-     // ✅ Use topic from original context instead of re-analyzing user clarification input for multi-suburb flow.
+     // ✅ For multi-suburb flow, use topic from original context instead of re-analyzing 
   topic = context.pendingTopic || 'general';
   console.log('[DEBUG route.ts] Using pending topic from context:', topic);
 
@@ -102,7 +83,7 @@ else {
         .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
         .join("\n• ");
 
-      const clarificationReply = `I didn't catch which suburb you meant. Could you clarify again?\n\nOptions:\n• ${optionsList}\n\nPlease reply specifying suburb, state, or LGA.`;
+      const clarificationReply = `I didn't catch which suburb you meant. Could you clarify again?\n\nOptions:\n• ${optionsList}\n\nPlease reply specifying the state or LGA.`;
 
       return NextResponse.json({
         reply: clarificationReply,
@@ -168,30 +149,35 @@ if (context.pendingTopic) {
   });
 }
 
-/* - The suburb, lga and state lookup is done in detectSuburb.ts - this code is redundant - DELETE after testing.  
-if (area && (!lga || !state)) {
-  console.log('[DEBUG route.ts] Looking up LGA and State for suburb:', area);
-  const { data: suburbInfo, error: suburbError } = await supabase
-    .from('lga_suburbs')
-    .select('lga, state')
-    .eq('suburb', area)
-    .single();
-
-  if (suburbError) {
-    console.error('[ERROR: route.ts] Failed to lookup suburb details:', suburbError);
-  } else if (suburbInfo) {
-    lga = suburbInfo.lga;
-    state = suburbInfo.state;
-    console.log('[DEBUG route.ts] Found LGA:', lga, 'State:', state);
-  }
-
-  updateContext({ suburb: area, lga: lga ?? undefined, state: state ?? undefined });
-
-  console.log('[DEBUG route.ts] Current context v2:', getContext());
-
+if ((topic === "yield" || topic === "projects") && !lga) {
+  throw new Error('route.ts error - LGA is required but missing.');
 }
-*/
 
+const topicHandlers: Record<string, () => Promise<string>> = {
+  price: () => answerMedianPrice(area),
+  crime: () => answerCrimeStats(area),
+  yield: () => {
+    return answerRentalYield(area, lga!);
+  },
+  price_growth: () => answerPriceGrowth(area, questionAnalysis.years || 3),
+  projects: () => {
+    return answerNewProjects(area, lga!);
+  }
+};
+
+
+if (area && topicHandlers[topic]) {
+  finalReply = await topicHandlers[topic]();
+} else if (topic === 'profile') {
+  finalReply = `Great! You requested a detailed profile for ${area}. Right now, we haven't implemented full profile yet...`;
+} else if (topic === 'compare') {
+  finalReply = `Comparison queries are coming soon!`;
+} else {
+  finalReply = await generateGeneralReply(messages, topic);
+  isVague = true;
+}
+
+/*
 if (area) {
   console.log('[DEBUG route.ts] Current topic:', topic);
   if (topic === 'price') {
@@ -199,14 +185,14 @@ if (area) {
   } else if (topic === 'crime') {
     finalReply = await answerCrimeStats(area);
   } else if (topic === 'yield') {
-    if (!lga) { //this is to ensure lga is passed correctly from detectSuburb.ts for yield topic as the dataset is lga level.
+    if (!lga) { //yield data is lga level.
     throw new Error('route.ts error - LGA is required for rental yield calculation but is missing');
   }
     finalReply = await answerRentalYield(area, lga);
   } else if (topic === 'price_growth') {
     finalReply = await answerPriceGrowth(area, questionAnalysis.years || 3);
   } else if (topic === 'projects') {
-    if (!lga) { //this is to ensure lga is passed correctly from detectSuburb.ts for projects topic as the dataset is lga level.
+    if (!lga) { //project data is lga level.
     throw new Error('route.ts error - LGA is required for project insights but is missing');
   }
     finalReply = await answerNewProjects(area, lga);
@@ -215,7 +201,7 @@ if (area) {
   } else if (topic === 'compare') {
     finalReply = `Comparison queries are coming soon!`;
   } else {
-    // ⚠️ fallback still inside — needs to be outside if area exists but topic is general
+    // ⚠️ fallback
     console.log('[DEBUG route.ts] generateGeneralReply:', topic);
     finalReply = await generateGeneralReply(messages, topic);
     isVague = true;
@@ -225,7 +211,7 @@ if (area) {
   finalReply = await generateGeneralReply(messages, topic);
   isVague = true;
 }
-
+*/
 const currentContext = getContext();
 
 if (!lga && currentContext.lga) {
