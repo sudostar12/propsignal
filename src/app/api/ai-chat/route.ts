@@ -11,6 +11,8 @@ import { answerPriceGrowth } from "@/utils/answers/priceGrowthAnswer";
 import { answerNewProjects } from "@/utils/answers/newProjectsAnswer";
 import { getSuggestionsForTopic } from '@/utils/suggestions';
 import { answerMultiSuburbComparison } from "@/utils/answers/multiSuburbAnswer";
+import { setSuburbContext } from "@/utils/contextManager";
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -114,16 +116,29 @@ else {
         options: suburbDetection.multipleMatches
       });
     }
+      // ✅ New block: handle no suburb found
+if (!suburbDetection.possible_suburb && !suburbDetection.needsClarification) {
+  console.log('[DEBUG route.ts] No suburb detected, using AI fallback clarification');
+
+  const aiFallbackMessage = await generateGeneralReply(messages, topic);
+
+  return NextResponse.json({
+    reply: aiFallbackMessage,
+    clarificationNeeded: true,
+    options: []
+  });
+}
 
     if (suburbDetection.possible_suburb) {
-      area = suburbDetection.possible_suburb;
-      lga = suburbDetection.lga;
-      state = suburbDetection.state;
-      console.log('[DEBUG route.ts] Suburb auto-detected:', area, ',', lga, ',', state);
-
-      // Update context
-      updateContext({ suburb: area, lga, state, clarificationOptions: [] });
-    }
+ 
+setSuburbContext({
+  suburb: suburbDetection.possible_suburb,
+  lga: suburbDetection.lga,
+  state: suburbDetection.state,
+  nearbySuburbs: suburbDetection.nearbySuburbs ?? [],
+  clarificationOptions: [],
+});
+}
   }
 if (area) {
   updateContext({
@@ -153,6 +168,15 @@ if ((topic === "yield" || topic === "projects") && !lga) {
   throw new Error('route.ts error - LGA is required but missing.');
 }
 
+const currentContext = getContext(); // ✅ Declare once, here
+
+if (!area && currentContext.suburb) {
+  area = currentContext.suburb;
+}
+
+console.log('[DEBUG route.ts] Topic value:', topic, ', Area value:', area);
+
+
 const topicHandlers: Record<string, () => Promise<string>> = {
   price: () => answerMedianPrice(area),
   crime: () => answerCrimeStats(area),
@@ -176,43 +200,6 @@ if (area && topicHandlers[topic]) {
   finalReply = await generateGeneralReply(messages, topic);
   isVague = true;
 }
-
-/*
-if (area) {
-  console.log('[DEBUG route.ts] Current topic:', topic);
-  if (topic === 'price') {
-    finalReply = await answerMedianPrice(area);
-  } else if (topic === 'crime') {
-    finalReply = await answerCrimeStats(area);
-  } else if (topic === 'yield') {
-    if (!lga) { //yield data is lga level.
-    throw new Error('route.ts error - LGA is required for rental yield calculation but is missing');
-  }
-    finalReply = await answerRentalYield(area, lga);
-  } else if (topic === 'price_growth') {
-    finalReply = await answerPriceGrowth(area, questionAnalysis.years || 3);
-  } else if (topic === 'projects') {
-    if (!lga) { //project data is lga level.
-    throw new Error('route.ts error - LGA is required for project insights but is missing');
-  }
-    finalReply = await answerNewProjects(area, lga);
-  } else if (topic === 'profile') {
-    finalReply = `Great! You requested a detailed profile for ${area}. Right now, we haven't implemented full profile yet...`;
-  } else if (topic === 'compare') {
-    finalReply = `Comparison queries are coming soon!`;
-  } else {
-    // ⚠️ fallback
-    console.log('[DEBUG route.ts] generateGeneralReply:', topic);
-    finalReply = await generateGeneralReply(messages, topic);
-    isVague = true;
-  }
-} else {
-  // 💥 If no area, handle general fallback
-  finalReply = await generateGeneralReply(messages, topic);
-  isVague = true;
-}
-*/
-const currentContext = getContext();
 
 if (!lga && currentContext.lga) {
   lga = currentContext.lga;

@@ -2,7 +2,7 @@ import { fetchCrime } from "@/utils/fetchSuburbData";
 import { getContext } from "@/utils/contextManager";
 
 export async function answerCrimeStats(suburb: string): Promise<string> {
-  console.log("[DEBUG-RY1] Fetching crime data for suburb:", suburb);
+  console.log("[DEBUG-C1] Fetching crime data for suburb:", suburb);
 
   const context = getContext();
   const nearbySuburbs = context.nearbySuburbs || [];
@@ -10,7 +10,7 @@ export async function answerCrimeStats(suburb: string): Promise<string> {
   const { suburbData, error } = await fetchCrime(suburb);
 
   if (error || !suburbData || suburbData.length === 0) {
-    console.error('[ERROR-RY1] No crime data found for:', suburb);
+    console.error('[ERROR-C1] No crime data found for:', suburb);
     return `Sorry, I couldn't find crime data for ${suburb}.`;
   }
 

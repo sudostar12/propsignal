@@ -7,11 +7,11 @@ export type UserContext = {
   budget?: string;
   purpose?: string; // invest, live, rent
   propertyType?: string;
-    clarificationOptions?: Array<{
+  clarificationOptions?: Array<{
     suburb: string;
     lga: string;
     state: string;
-    }>
+  }>;
   pendingTopic?: string; // ✅ New field for clarification topic
   nearbySuburbs?: string[];
 };
@@ -28,4 +28,36 @@ export function getContext() {
 
 export function resetContext() {
   sessionContext = {};
+}
+
+// ✅ New enhanced helper to standardize suburb-related context updates
+export interface SuburbContextInput {
+  suburb: string;
+  lga?: string;
+  state?: string;
+  nearbySuburbs?: string[];
+  clarificationOptions?: Array<{
+    suburb: string;
+    lga: string;
+    state: string;
+  }>;
+  pendingTopic?: string;
+}
+
+export function setSuburbContext({
+  suburb,
+  lga,
+  state,
+  nearbySuburbs = [],
+  clarificationOptions = [],
+  pendingTopic
+}: SuburbContextInput) {
+  updateContext({
+    suburb,
+    lga,
+    state,
+    nearbySuburbs,
+    clarificationOptions,
+    pendingTopic
+  });
 }

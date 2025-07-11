@@ -24,14 +24,15 @@ interface DetectionResult {
   extractedSuburb?: string;
   message?: string;
   isFuzzyMatch?: boolean;
+  nearbySuburbs?: string[];
 }
 
 // Main detection function
 export async function detectSuburb(input: string): Promise<DetectionResult> {
-  console.log('[DEBUG] detectSuburb - Starting suburb detection for input:', input);
+  console.log('[DEBUG detectSuburb] detectSuburb - Starting suburb detection for input:', input);
 
   const intent = await detectUserIntent(input);
-console.log('[DEBUG] Detected intent:', intent);
+console.log('[DEBUG detectSuburb] Detected intent:', intent);
 
 /*
 if (intent !== 'suburb') {
@@ -46,16 +47,16 @@ if (intent !== 'suburb') {
 }
   */ //temp exclusion for testing suburb logging. 
 
-  console.log('[DEBUG] Detected intent:', intent);
+  console.log('[DEBUG detectSuburb] Detected intent:', intent);
 
   // Step 1: Extract suburb using AI
-  console.log('[DEBUG] detectSuburb - Using AI to extract suburb name');
+  console.log('[DEBUG detectSuburb] - Using AI to extract suburb name');
   const extractedSuburb = await extractSuburbUsingAI(input);
-  console.log('[DEBUG] detectSuburb - AI extracted suburb:', extractedSuburb);
+  console.log('[DEBUG detectSuburb] - AI extracted suburb:', extractedSuburb);
   
   // Check if the AI extrated suburb is valid
   if (!extractedSuburb || extractedSuburb.length < 2) {
-  console.log('[DEBUG] AI could not extract a valid suburb. Skipping DB lookup.');
+  console.log('[DEBUG detectSuburb] - AI could not extract a valid suburb. Skipping DB lookup.');
   return {
     possible_suburb: null,
     confidence: 0,
@@ -65,7 +66,7 @@ if (intent !== 'suburb') {
 }
   // Get the the first three letters of the AI generated suburb
   const firstThreeLetters = extractedSuburb.slice(0, 3).toLowerCase();
-  console.log('[DEBUG] First 3 letters of extracted suburb:', firstThreeLetters);
+  console.log('[DEBUG detectSuburb] First 3 letters of extracted suburb:', firstThreeLetters);
 
 
 
@@ -88,7 +89,7 @@ const { data: allSuburbs, error } = await supabase
     };
   }
   
-  console.log('[DEBUG] detectSuburb - Loaded', allSuburbs?.length || 0, 'suburbs from database');
+  console.log('[DEBUG detectSuburb] - Loaded', allSuburbs?.length || 0, 'suburbs from database');
   
   if (!allSuburbs || allSuburbs.length === 0) {
     console.error('[ERROR] No suburbs loaded from database');
@@ -102,13 +103,13 @@ const { data: allSuburbs, error } = await supabase
   
   // Step 3: Clean and normalize the extracted suburb name
   const normalizedExtracted = normalizeSuburbName(extractedSuburb);
-  console.log('[DEBUG] detectSuburb - Normalized extracted suburb:', normalizedExtracted);
+  console.log('[DEBUG detectSuburb] - Normalized extracted suburb:', normalizedExtracted);
   
   // Step 5: Find exact matches with normalized comparison
-  console.log('[DEBUG] detectSuburb - Looking for matches for:', normalizedExtracted);
+  console.log('[DEBUG detectSuburb] - Looking for matches for:', normalizedExtracted);
 
   // Step 5: Find exact matches with normalized comparison
-  console.log('[DEBUG] detectSuburb - Looking for matches for:', normalizedExtracted);
+  console.log('[DEBUG detectSuburb] - Looking for matches for:', normalizedExtracted);
   
   const allMatches = allSuburbs.filter(s => {
     const normalizedDb = normalizeSuburbName(s.suburb);
@@ -124,24 +125,25 @@ const { data: allSuburbs, error } = await supabase
   });
   
   
-  console.log('[DEBUG] detectSuburb - Found matches:', 
+  console.log('[DEBUG detectSuburb] - Found matches:', 
     allMatches.map(s => `${s.suburb} (${s.lga}, ${s.state})`)
   );
   
   // Step 6: Handle results based on number of matches
   if (allMatches.length === 0) {
-    console.log('[DEBUG] detectSuburb - No exact matches found');
+    console.log('[DEBUG detectSuburb] - No exact matches found');
     // Try fuzzy matching
     return tryFuzzyMatching(normalizedExtracted, extractedSuburb, allSuburbs);
   } else if (allMatches.length === 1) {
     // Single match - perfect!
     const exactMatch = allMatches[0];
-    console.log('[DEBUG] detectSuburb - Single exact match found: Suburb:',exactMatch.suburb,', LGA:',exactMatch.lga,', State:',exactMatch.state);
+    console.log('[DEBUG detectSuburb] - Single exact match found: Suburb:',exactMatch.suburb,', LGA:',exactMatch.lga,', State:',exactMatch.state);
     
     const suburbName = exactMatch.suburb;
   const lgaName = exactMatch.lga;
 
   // Query other suburbs in same LGA
+  let nearbyList: string[] = [];
   const { data: nearbySuburbs, error } = await supabase
     .from('lga_suburbs')
     .select('suburb')
@@ -155,6 +157,7 @@ const { data: allSuburbs, error } = await supabase
     const nearbyList = nearbySuburbs?.map(s => s.suburb) || [];
     console.log('[DEBUG detectSuburb] Nearby suburbs in same LGA:', nearbyList);
 
+   /*
     // Update context with detected suburb and nearby suburbs
     updateContext({
       suburb: suburbName,
@@ -162,6 +165,7 @@ const { data: allSuburbs, error } = await supabase
       state: exactMatch.state,
       nearbySuburbs: nearbyList
     });
+    */
   }
 
   return {
@@ -169,11 +173,12 @@ const { data: allSuburbs, error } = await supabase
     confidence: 0.95,
     lga: exactMatch.lga,
     state: exactMatch.state,
-    needsClarification: false
+    needsClarification: false,
+    nearbySuburbs: nearbyList
   };
 } else {
     // Multiple matches - ask user to clarify
-    console.log('[DEBUG] detectSuburb - Multiple matches found, need user clarification');
+    console.log('[DEBUG detectSuburb] - Multiple matches found, need user clarification');
     return {
       possible_suburb: null,
       confidence: 0,
@@ -202,14 +207,14 @@ function normalizeSuburbName(name: string): string {
 
 // Fuzzy matching function
 function tryFuzzyMatching(normalizedExtracted: string, originalExtracted: string, allSuburbs: SuburbData[]): DetectionResult {
-  console.log('[DEBUG] detectSuburb - No exact match, trying fuzzy matching for:', normalizedExtracted);
+  console.log('[DEBUG detectSuburb] - No exact match, trying fuzzy matching for:', normalizedExtracted);
   
   const fuzzyMatches = allSuburbs.filter(s => {
     const normalizedDb = normalizeSuburbName(s.suburb);
     
     // Skip if it's an exact match (should have been caught earlier)
     if (normalizedDb === normalizedExtracted) {
-      console.log(`[WARNING] Exact match found in fuzzy matching: "${s.suburb}" - this suggests a normalization issue`);
+      console.log(`[WARNING detectSuburb] Exact match found in fuzzy matching: "${s.suburb}" - this suggests a normalization issue`);
       return true;
     }
     
@@ -225,10 +230,10 @@ function tryFuzzyMatching(normalizedExtracted: string, originalExtracted: string
     return isPartialMatch || isCloseMatch;
   });
   
-  console.log('[DEBUG] detectSuburb - Fuzzy matches:', fuzzyMatches.map(s => s.suburb));
+  console.log('[DEBUG detectSuburb] - Fuzzy matches:', fuzzyMatches.map(s => s.suburb));
   
   if (fuzzyMatches.length === 0) {
-    console.log('[DEBUG] AI suburb detection result: { possible_suburb: null, confidence: 0 }');
+    console.log('[DEBUG detectSuburb] AI suburb detection result1: { possible_suburb: null, confidence: 0 }');
     return {
       possible_suburb: null,
       confidence: 0,
@@ -258,7 +263,7 @@ function tryFuzzyMatching(normalizedExtracted: string, originalExtracted: string
   
   if (bestMatchSuburbs.length > 1) {
     // Multiple states for the same suburb
-    console.log('[DEBUG] detectSuburb - Best fuzzy match has multiple states, need clarification');
+    console.log('[DEBUG detectSuburb] - Best fuzzy match has multiple states, need clarification');
     return {
       possible_suburb: null,
       confidence: 0.8,
@@ -272,7 +277,7 @@ function tryFuzzyMatching(normalizedExtracted: string, originalExtracted: string
   
   // Single fuzzy match
   const bestMatch = bestMatchSuburbs[0];
-  console.log('[DEBUG] detectSuburb - Best fuzzy match: Best Match Suburb:', bestMatch.suburb,  'Best Match LGA:',bestMatch.lga,', Best Match State:',bestMatch.state);
+  console.log('[DEBUG detectSuburb] - Best fuzzy match: Best Match Suburb:', bestMatch.suburb,  'Best Match LGA:',bestMatch.lga,', Best Match State:',bestMatch.state);
   
   const result = {
     possible_suburb: bestMatch.suburb,
@@ -283,7 +288,7 @@ function tryFuzzyMatching(normalizedExtracted: string, originalExtracted: string
     needsClarification: false
   };
   
-  console.log('[DEBUG] AI suburb detection result:', result);
+  console.log('[DEBUG detectSuburb] AI suburb detection result2:', result);
   return result;
 }
 
@@ -344,7 +349,7 @@ async function extractSuburbUsingAI(input: string): Promise<string> {
     const extracted = completion.choices[0]?.message?.content?.trim() || '';
     
     if (extracted === 'NO_SUBURB_FOUND' || !extracted) {
-      console.log('[DEBUG] AI could not extract a suburb from input');
+      console.log('[DEBUG detectSuburb] AI could not extract a suburb from input');
       // Fallback to simple pattern matching
       return extractSuburbFallback(input);
     }
