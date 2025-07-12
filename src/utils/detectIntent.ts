@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { analyzeUserQuestion } from '@/utils/questionAnalyzer';
+//import { analyzeUserQuestion } from '@/utils/questionAnalyzer';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -51,7 +51,7 @@ Return only one word exactly as listed above. No explanation.`
 // ✅ 
 export async function generateGeneralReply(messages: ChatMessage[], topic:string): Promise<string> {
   try {
-    console.log('[DEBUG detectIntent] - AI fallback to general response');
+    console.log('[DEBUG detectIntent] - AI fallback to general response for topic:', topic);
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       temperature: 0.7,
