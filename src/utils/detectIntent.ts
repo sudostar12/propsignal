@@ -6,10 +6,12 @@ export type ChatMessage = {
   content: string;
 };
 
+/* - This is likely not used. questionAnalyzer.ts is used instead. Test and delete this code block if not required. - 11/07
 
-export type UserIntent = 'invest' | 'live' | 'rent' | 'suburb' | 'help' | 'unsure'; //this is likely not used. questionAnalyzer.ts is used instead. - 11/07
+export type UserIntent = 'invest' | 'live' | 'rent' | 'suburb' | 'help' | 'unsure'; 
 
 export async function detectUserIntent(userInput: string): Promise<UserIntent> {
+  console.log('[DEBUG detectIntent] - Detecting user intent based on input');
   try {
     const intentDetection = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -43,7 +45,7 @@ Return only one word exactly as listed above. No explanation.`
     return 'unsure';
   }
 }
-
+*/
 // ✅ 
 export async function generateGeneralReply(messages: ChatMessage[], detectedIntent:string): Promise<string> {
   try {

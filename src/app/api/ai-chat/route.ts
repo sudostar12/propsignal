@@ -117,17 +117,17 @@ else {
       });
     }
       // ✅ AI fallback to handle no suburb found
-if (!suburbDetection.possible_suburb && !suburbDetection.needsClarification) {
-  console.log('[DEBUG route.ts] No suburb detected, using AI fallback clarification');
+      if (!suburbDetection.possible_suburb && !suburbDetection.needsClarification) {
+      console.log('[DEBUG route.ts] No suburb detected, using AI fallback clarification');
 
-  const aiFallbackMessage = await generateGeneralReply(messages, topic);
+      const aiFallbackMessage = await generateGeneralReply(messages, topic);
 
-  return NextResponse.json({
-    reply: aiFallbackMessage,
-    clarificationNeeded: true,
-    options: []
-  });
-}
+      return NextResponse.json({
+      reply: aiFallbackMessage,
+      clarificationNeeded: true,
+      options: []
+      });
+    }
 
     if (suburbDetection.possible_suburb) {
  
@@ -184,14 +184,10 @@ console.log('[DEBUG route.ts] Topic value:', topic, ', Area value:', area);
 const topicHandlers: Record<string, () => Promise<string>> = {
   price: () => answerMedianPrice(area),
   crime: () => answerCrimeStats(area),
-  yield: () => {
-    return answerRentalYield(area, lga!);
-  },
+  yield: () => {return answerRentalYield(area, lga!);},
   price_growth: () => answerPriceGrowth(area, questionAnalysis.years || 3),
-  projects: () => {
-    return answerNewProjects(area, lga!);
-  }
-};
+  projects: () => {return answerNewProjects(area, lga!);}
+  };
 
 
 if (area && topicHandlers[topic]) {
@@ -220,6 +216,7 @@ While we're building this, you can still explore detailed insights on individual
 Feel free to ask about any of these, or anything else you'd like to explore about ${area}!`;
 
 } else {
+  console.log('[DEBUG route.ts] Preparing AI general response.');
   finalReply = await generateGeneralReply(messages, topic);
   isVague = true;
 }

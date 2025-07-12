@@ -2,7 +2,10 @@
 
 import OpenAI from 'openai';
 import { supabase } from '@/lib/supabaseClient';
-import { detectUserIntent } from '@/utils/detectIntent';
+//import { detectUserIntent } from '@/utils/detectIntent';
+import { generateGeneralReply, ChatMessage } from '@/utils/detectIntent';
+import { analyzeUserQuestion } from '@/utils/questionAnalyzer';
+
 
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -40,39 +43,32 @@ export interface SuburbDetectionResponse {
 export async function detectSuburb(input: string): Promise<DetectionResult> {
   console.log('[DEBUG detectSuburb] detectSuburb - Starting suburb detection for input:', input);
 
-  const intent = await detectUserIntent(input);
-  console.log('[DEBUG detectSuburb] Detected intent:', intent);
-
-  /*
-  if (intent !== 'suburb') {
-    console.log('[DEBUG] Intent is not suburb — skipping suburb extraction');
-      
-   return {
-    possible_suburb: null,
-    confidence: 0,
-    needsClarification: false,
-    message: "I couldn't detect a suburb in your message." // optional fallback
-  };
-  }
-  */ //temp exclusion for testing suburb logging. 
-
-  console.log('[DEBUG detectSuburb] Detected intent:', intent);
-
+  //const intent = await detectUserIntent(input);
+  //console.log('[DEBUG detectSuburb] Detected intent:', intent);
+ 
   // Step 1: Extract suburb using AI
   console.log('[DEBUG detectSuburb] - Using AI to extract suburb name');
   const extractedSuburb = await extractSuburbUsingAI(input);
   console.log('[DEBUG detectSuburb] - AI extracted suburb:', extractedSuburb);
   
   // Check if the AI extracted suburb is valid
-  if (!extractedSuburb || extractedSuburb.length < 2) {
-    console.log('[DEBUG detectSuburb] - AI could not extract a valid suburb. Skipping DB lookup.');
-    return {
-      possible_suburb: null,
-      confidence: 0,
-      needsClarification: true,
-      message: 'Sorry, I could not detect a suburb in your question. Could you please provide it?'
-    };
-  }
+if (!extractedSuburb || extractedSuburb.length < 2) {
+  console.log('[DEBUG detectSuburb] - AI could not extract a valid suburb. Falling back to general AI reply.');
+
+  const messages: ChatMessage[] = [
+  { role: 'user', content: input }
+];
+
+
+  const fallbackReply = await generateGeneralReply(messages, input);
+  return {
+    possible_suburb: null,
+    confidence: 0,
+    needsClarification: true,
+    message: fallbackReply
+  };
+}
+
 
   // Get the first three letters of the AI generated suburb
   const firstThreeLetters = extractedSuburb.slice(0, 3).toLowerCase();
@@ -100,11 +96,18 @@ export async function detectSuburb(input: string): Promise<DetectionResult> {
   
   if (!allSuburbs || allSuburbs.length === 0) {
     console.error('[ERROR detectSuburb] No suburbs loaded from database');
+    const questionAnalysis = await analyzeUserQuestion(input);
+    const topic = questionAnalysis.topic;   
+    const messages: ChatMessage[] = [
+    { role: 'user', content: input }
+    ];
+
+    const fallbackReply = await generateGeneralReply(messages, topic);
     return {
-      possible_suburb: null,
-      confidence: 0,
-      needsClarification: false,
-      message: 'Unable to load suburb data'
+    possible_suburb: null,
+    confidence: 0,
+    needsClarification: true,
+    message: fallbackReply
     };
   }
   
@@ -252,44 +255,6 @@ function extractSuburbFallback(input: string): string {
   // Last resort - return empty string
   return '';
 }
-/*
-// Example usage function with proper return type
-export async function handleSuburbDetection(userInput: string): Promise<SuburbDetectionResponse> {
-  const result = await detectSuburb(userInput);
-  
-  if (result.needsClarification && result.multipleMatches) {
-    // Show user the options
-    console.log('\n🤔 Clarification needed:', result.message);
-    result.multipleMatches.forEach((match, index) => {
-      console.log(`  ${index + 1}. ${match.suburb}, ${match.lga}, ${match.state}`);
-    });
-    
-    return {
-      action: 'ASK_USER',
-      options: result.multipleMatches,
-      message: result.message
-    };
-  } else if (result.possible_suburb) {
-    // Found a match (exact or fuzzy)
-    console.log(`\n✅ Found suburb: ${result.possible_suburb} (${result.state})`);
-    console.log(`   Confidence: ${(result.confidence * 100).toFixed(0)}%`);
-    
-    return {
-      action: 'PROCEED',
-      suburb: result.possible_suburb,
-      state: result.state,
-      lga: result.lga
-    };
-  } else {
-    // No match found
-    console.log('\n❌ No suburb found');
-    return {
-      action: 'NOT_FOUND',
-      message: result.message
-    };
-  }
-}
-*/
 // Debug function to check your database
 export async function debugDatabaseSuburbs(searchTerm: string = 'box hill'): Promise<void> {
   console.log('\n=== DATABASE DEBUG ===');
