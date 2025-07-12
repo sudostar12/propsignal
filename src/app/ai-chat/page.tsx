@@ -23,6 +23,7 @@ export default function AIChatPage() {
     },
   ]);
   const [input, setInput] = useState('');
+  const MAX_CHARS = 300;
   const [copiedUuid, setCopiedUuid] = useState<string | null>(null); // ✅ for tracking copied message
   const [isTyping, setIsTyping] = useState(false); //AI typing animation. 
   const [suggestions, setSuggestions] = useState<string[]>([]); // 🆕 suggestions state
@@ -76,6 +77,8 @@ export default function AIChatPage() {
     const updatedMessages: Message[] = [...messages, { role: 'user', content: messageToSend }];
     setMessages(updatedMessages);
 
+    // ✅ Clear input immediately after adding user message
+    setInput(''); 
     
     setIsTyping(true); // before fetch
     // Call backend api
@@ -104,11 +107,8 @@ setMessages([
     uuid: data.uuid,
   },
 ]);
-
     // 🆕 Update suggestions from backend
     setSuggestions(data.suggestions || []);
-
-    setInput('');
   }
 
   return (
@@ -149,10 +149,10 @@ setMessages([
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: 'easeOut', delay: 0.2 * i }}
+        transition={{ duration: 0.1, ease: 'easeOut', delay: 0.1 * i }}
         className="flex justify-start"
       >
-        <div className="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-sm max-w-xs md:max-w-md whitespace-pre-wrap">
+        <div className="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-sm w-full whitespace-pre-wrap">
           {m.content}
         </div>
       </motion.div>
@@ -187,7 +187,7 @@ setMessages([
         <div className="h-4 w-px bg-gray-300" />
 
         {m.feedbackGiven ? (
-          <span className="text-green-600">✅ Feedback recorded</span>
+          <span className="text-green-600">✅ Feedback recorded</span> //change this to a more subtle tone. 
         ) : (
           <div className="flex items-center gap-2">
             <button
@@ -243,18 +243,30 @@ setMessages([
       <div className="flex items-center gap-2">
         <input
           type="text"
-          placeholder="e.g. Compare Box Hill and Doncaster for investment"
+          placeholder="e.g. Show me price trends for Doncaster"
           className="flex-1 px-4 py-2 rounded-full border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+          if (e.target.value.length <= MAX_CHARS) {
+          setInput(e.target.value);
+          }
+        }}
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+          maxLength={MAX_CHARS}
         />
         <button
           onClick={() => sendMessage()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          disabled={!input.trim()}
+          className={`px-4 py-2 rounded-md transition ${
+          !input.trim() ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
         >
           Send
         </button>
+        <div className="flex justify-end text-xs text-gray-500 mt-1">
+  {input.trim().length} / {MAX_CHARS} characters
+</div>
+
       </div>
     </div>
   </main>

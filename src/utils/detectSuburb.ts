@@ -54,13 +54,12 @@ export async function detectSuburb(input: string): Promise<DetectionResult> {
   // Check if the AI extracted suburb is valid
 if (!extractedSuburb || extractedSuburb.length < 2) {
   console.log('[DEBUG detectSuburb] - AI could not extract a valid suburb. Falling back to general AI reply.');
-
+    const questionAnalysis = await analyzeUserQuestion(input);
+    const topic = questionAnalysis.topic; 
   const messages: ChatMessage[] = [
   { role: 'user', content: input }
 ];
-
-
-  const fallbackReply = await generateGeneralReply(messages, input);
+  const fallbackReply = await generateGeneralReply(messages, topic);
   return {
     possible_suburb: null,
     confidence: 0,
@@ -68,8 +67,6 @@ if (!extractedSuburb || extractedSuburb.length < 2) {
     message: fallbackReply
   };
 }
-
-
   // Get the first three letters of the AI generated suburb
   const firstThreeLetters = extractedSuburb.slice(0, 3).toLowerCase();
   console.log('[DEBUG detectSuburb] First 3 letters of extracted suburb:', firstThreeLetters);
@@ -210,7 +207,8 @@ async function extractSuburbUsingAI(input: string): Promise<string> {
           - "investment profile for box hill" -> "Box Hill"
           - "what's the weather in St Kilda" -> "St Kilda"
           - "properties in south yarra" -> "South Yarra"
-          - "hello how are you" -> "NO_SUBURB_FOUND"`
+          - "hello how are you" -> "NO_SUBURB_FOUND"
+          - "investment insights for Tarneit and Point Cook" -> "Tarneit" "Point Cook"`
         },
         {
           role: "user",

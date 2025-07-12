@@ -28,5 +28,7 @@ export async function answerMedianPrice(suburb: string) {
     ? `$${latest.medianPrice.toLocaleString()}`
     : 'unknown price';
 
-  return `As of ${latest.year}, the median price in ${suburb} is ${priceFormatted}. Let me know if you'd like to see trends or compare to nearby areas.`;
+  return `As of ${latest.year}, the median price in ${suburb} is ${priceFormatted}. 
+  
+  💬 Let me know if you'd like to explore other trends or dive deeper into any specific areas!`;
 }

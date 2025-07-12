@@ -55,7 +55,7 @@ const finalMsg = `🔎 **Crime Snapshot for ${suburb}**
 🚨 **Reported Offences**: ${latest.offenceCount}
 📈 **Trend**: ${trendMsg}${nearbyMsg}
 
-💬 Let me know if you'd like to see offence breakdowns, more trends, or deeper comparisons!`;
+💬 Let me know if you'd like to explore other trends or dive deeper into any specific areas!`;
 
 return finalMsg;
 
