@@ -26,12 +26,25 @@ export async function POST(req: NextRequest) {
     const questionAnalysis = await analyzeUserQuestion(userInput);
     console.log('[DEBUG route.ts] Question analysis:', questionAnalysis);
 
-    let area = questionAnalysis.targetArea;
-    let topic = questionAnalysis.topic;
+    //let area = questionAnalysis.targetArea;
+    //let topic = questionAnalysis.topic;
     let finalReply = '';
     let isVague = false;
     let lga = null;
     let state = null;
+
+    let topic = questionAnalysis.topic;
+    //const targetAreas = questionAnalysis.targetAreas || [];
+    let area: string | undefined = undefined;
+    const suburb1 = questionAnalysis.targetAreas[0];
+    const suburb2 = questionAnalysis.targetAreas[1];
+
+
+if (topic === 'compare' && questionAnalysis.targetAreas.length > 1) {
+  console.log('[DEBUG route.ts] Multi-suburb comparison requested:', questionAnalysis.targetAreas);
+  // In compare flow, do not set area here
+}
+
 
     // ============================
     // [DEBUG-S5.1] MULTI-SUBURB COMPARISON HANDLING
@@ -40,7 +53,7 @@ export async function POST(req: NextRequest) {
 
 if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis.targetAreas.length > 1) {
   console.log('[DEBUG-route.ts] Multi-suburb comparison requested:', questionAnalysis.targetAreas);
-
+  
   finalReply = await answerMultiSuburbComparison(questionAnalysis.targetAreas, questionAnalysis.topic);
 }
   
@@ -140,6 +153,7 @@ setSuburbContext({
 });
 }
   }
+  /* - likely redundant block. test and remove if not required - 13/07
 if (area) {
   updateContext({
     suburb: area,
@@ -147,7 +161,7 @@ if (area) {
     state: state ?? undefined
   });
 }
-
+*/
   console.log('[DEBUG route.ts] Current context v1:', getContext());
 }
 
@@ -167,26 +181,40 @@ if (context.pendingTopic) {
 
 const currentContext = getContext();
 
-if (!area && currentContext.suburb) {
+if (topic !== 'compare' && !area && currentContext.suburb) {
   area = currentContext.suburb;
 }
+
 if (!lga && currentContext.lga) {
   lga = currentContext.lga;
 }
 
+// ✅ At this point, you know if area is still undefined, it's an error
+if (!area && topic !== 'compare') {
+  throw new Error('route.ts error - Area is required for this topic but not found.');
+}
+if (topic !== 'compare') {
+  const areaSafe = area!;
+  // You can safely use areaSafe inside this block or below only for non-compare handlers
+}
 if ((topic === "yield" || topic === "projects") && !lga) {
   throw new Error('route.ts error - LGA is required but missing.');
 }
 
-console.log('[DEBUG route.ts] Topic value:', topic, ', Area value:', area);
+if (topic === 'compare') {
+  console.log('[DEBUG route.ts] Topic value:', topic, ', Target areas:', questionAnalysis.targetAreas);
+} else {
+  console.log('[DEBUG route.ts] Topic value:', topic, ', Area value:', area);
+}
 
 
+const areaSafe = area!;
 const topicHandlers: Record<string, () => Promise<string>> = {
-  price: () => answerMedianPrice(area),
-  crime: () => answerCrimeStats(area),
-  yield: () => {return answerRentalYield(area, lga!);},
-  price_growth: () => answerPriceGrowth(area, questionAnalysis.years || 3),
-  projects: () => {return answerNewProjects(area, lga!);}
+  price: () => answerMedianPrice(areaSafe),
+  crime: () => answerCrimeStats(areaSafe),
+  yield: () => {return answerRentalYield(areaSafe, lga!);},
+  price_growth: () => answerPriceGrowth(areaSafe, questionAnalysis.years || 3),
+  projects: () => {return answerNewProjects(areaSafe, lga!);}
   };
 
 
@@ -204,16 +232,16 @@ In the meantime, here are a few things you can ask about ${area}:
 
 Just type one of these, or ask about anything else you'd like to explore!`;
 } else if (topic === 'compare') {
-  finalReply = `Thanks for your question! Our suburb comparison feature is currently being developed — it will let you easily compare ${area} with other suburbs on price trends, rental yields, and more.
+  finalReply = `Thanks for your question! Our suburb comparison feature is currently being developed — it will let you easily compare ${questionAnalysis.targetAreas.join (" and ")} on price trends, rental yields, and more.
 
 While we're building this, you can still explore detailed insights on individual suburbs, one at a time. Here are some example prompts you can try:
-• "What is the median price in ${area}?"
-• "Tell me the rental yield for ${area}."
-• "Show me price growth trends in ${area}."
-• "Are there any new projects in ${area}?"
-• "What are the crime stats for ${area}?"
+• "What is the median price in ${suburb1}?"
+• "Tell me the rental yield for ${suburb2}."
+• "Show me price growth trends in ${suburb2}."
+• "Are there any new projects in ${suburb2}?"
+• "What are the crime stats for ${suburb1}?"
 
-Feel free to ask about any of these, or anything else you'd like to explore about ${area}!`;
+Feel free to ask about any of these, or anything else you'd like to explore!`;
 
 } else {
   console.log('[DEBUG route.ts] Preparing AI general response.');

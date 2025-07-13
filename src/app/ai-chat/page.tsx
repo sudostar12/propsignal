@@ -19,7 +19,7 @@ export default function AIChatPage() {
     {
       role: 'assistant',
       content:
-        'Hi there! I can help you get suburbs-specific insights, check investment potential, or understand rental returns in Australia.\n\nYou can start by asking something like:\n- "What are price trends for Doncaster?"\n- "What’s the rental yield in Ballarat?"\n- "Is Cranbourne a good family suburb?"',
+        'Hi there! Your personal property data co-pilot. I can help you get suburbs-specific insights, check investment potential, or understand rental returns in Australia. No hidden agendas. No upsells.\n\nYou can start by asking something like:\n- "What are price trends for Doncaster?"\n- "What’s the rental yield in Ballarat?"\n- "Is Cranbourne a good family suburb?"',
     },
   ]);
   const [input, setInput] = useState('');
