@@ -194,7 +194,7 @@ if (!area && topic !== 'compare') {
   throw new Error('route.ts error - Area is required for this topic but not found.');
 }
 if (topic !== 'compare') {
-  const areaSafe = area!;
+ // const areaSafe = area!;
   // You can safely use areaSafe inside this block or below only for non-compare handlers
 }
 if ((topic === "yield" || topic === "projects") && !lga) {
