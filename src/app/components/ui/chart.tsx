@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
-import type { TooltipProps } from "recharts"
+//import type { TooltipProps } from "recharts"
 
 import { cn } from "@/lib/utils"
 
@@ -121,13 +121,13 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
       indicator = "dot",
       hideLabel = false,
       hideIndicator = false,
-      label,
+      //label,
       labelFormatter,
       labelClassName,
-      formatter,
+      //formatter,
       color,
       nameKey,
-      labelKey,
+      //labelKey,
       ...rest
     },
     ref
@@ -231,6 +231,7 @@ const ChartLegendContent = React.forwardRef<
       id?: string
       color?: string
       dataKey?: string
+      payload?: Record<string, unknown>
       [key: string]: any
     }[]
     verticalAlign?: "top" | "bottom" | "middle"
@@ -282,7 +283,7 @@ ChartLegendContent.displayName = "ChartLegendContent"
 // Helper to get item config from payload
 function getPayloadConfigFromPayload(
   config: ChartConfig,
-  payload: any,
+  payload: Record<string, unknown>,
   key: string
 ) {
   if (typeof payload !== "object" || payload === null) return undefined
@@ -291,21 +292,28 @@ function getPayloadConfigFromPayload(
     "payload" in payload &&
     typeof payload.payload === "object" &&
     payload.payload !== null
-      ? payload.payload
+      ? payload.payload as Record<string, unknown>
       : undefined
 
   let configLabelKey: string = key
 
-  if (key in payload && typeof payload[key] === "string") {
-    configLabelKey = payload[key]
-  } else if (payloadPayload && key in payloadPayload && typeof payloadPayload[key] === "string") {
-    configLabelKey = payloadPayload[key]
+  if (key in payload) {
+    const value = payload[key]
+    if (typeof value === "string") {
+      configLabelKey = value
+    }
+  } else if (payloadPayload && key in payloadPayload) {
+    const innerValue = payloadPayload[key]
+    if (typeof innerValue === "string") {
+      configLabelKey = innerValue
+    }
   }
 
   return configLabelKey in config
     ? config[configLabelKey]
     : config[key as keyof typeof config]
 }
+
 
 // Export all components
 export {
