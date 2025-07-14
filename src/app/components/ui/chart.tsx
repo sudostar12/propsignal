@@ -92,7 +92,7 @@ ChartContainer.displayName = "ChartContainer"
 // Style injection to support dynamic color theming
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 const colorConfig = Object.entries(config).filter(
-  ([_, cfg]: [string, ChartConfig[string]]) => cfg.theme || cfg.color
+  ([, cfg]: [string, ChartConfig[string]]) => cfg.theme || cfg.color
 )
 
   if (!colorConfig.length) return null
