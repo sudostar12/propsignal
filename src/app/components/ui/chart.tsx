@@ -6,20 +6,30 @@ import * as RechartsPrimitive from "recharts"
 
 import { cn } from "@/lib/utils"
 
+type TooltipPayloadItem = {
+  value: string | number
+  name?: string
+  dataKey?: string
+  color?: string
+  payload?: Record<string, unknown>
+  [key: string]: unknown
+}
+
 type ChartTooltipContentProps = React.ComponentProps<"div"> & {
-    active?: boolean
-    payload?: any[]
-    label?: string | number
-    labelFormatter?: (label: any, payload: any) => React.ReactNode
-    formatter?: any
-    color?: string
-    hideLabel?: boolean
-    hideIndicator?: boolean
-    indicator?: "line" | "dot" | "dashed"
-    nameKey?: string
-    labelKey?: string
-    labelClassName?: string
-  }
+  active?: boolean
+  payload?: TooltipPayloadItem[]
+  label?: string | number
+  labelFormatter?: (label: string | number, payload: TooltipPayloadItem[]) => React.ReactNode
+  formatter?: (...args: unknown[]) => React.ReactNode
+  color?: string
+  hideLabel?: boolean
+  hideIndicator?: boolean
+  indicator?: "line" | "dot" | "dashed"
+  nameKey?: string
+  labelKey?: string
+  labelClassName?: string
+}
+
 
 // Supported themes object
 const THEMES = { light: "", dark: ".dark" } as const
@@ -81,9 +91,10 @@ ChartContainer.displayName = "ChartContainer"
 
 // Style injection to support dynamic color theming
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const colorConfig = Object.entries(config).filter(
-    ([_, cfg]) => cfg.theme || cfg.color
-  )
+const colorConfig = Object.entries(config).filter(
+  ([_, cfg]: [string, ChartConfig[string]]) => cfg.theme || cfg.color
+)
+
   if (!colorConfig.length) return null
 
   return (
@@ -162,55 +173,46 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
       >
         {tooltipLabel}
         <div className="grid gap-1.5">
-          {payload.map(
-            (
-              item: {
-                value: string
-                type: string
-                id?: string
-                color?: string
-                dataKey?: string
-                name?: string
-                payload?: any
-                [key: string]: any
-              },
-              index: number
-            ) => {
-              const key = `${nameKey || item.name || item.dataKey || "value"}`
-              const itemConfig = getPayloadConfigFromPayload(config, item, key)
-              const indicatorColor = color || item.color || item.payload?.fill
+{payload.map(
+  (item: TooltipPayloadItem, index: number) => {
+    const key = `${nameKey || item.name || item.dataKey || "value"}`
+    const itemConfig = getPayloadConfigFromPayload(config, item, key)
+    const payloadFill = item.payload && typeof item.payload.fill === "string" ? item.payload.fill : undefined
+    const indicatorColor = color || item.color || payloadFill
 
-              return (
-                <div
-                  key={item.dataKey || index}
-                  className={cn("flex w-full items-center gap-2")}
-                >
-                  {!hideIndicator && (
-                    <div
-                      className={cn(
-                        "shrink-0 rounded",
-                        indicator === "dot" && "h-2.5 w-2.5",
-                        indicator === "line" && "w-1 h-4",
-                        indicator === "dashed" && "w-0 h-4 border border-dashed bg-transparent"
-                      )}
-                      style={{
-                        backgroundColor: indicatorColor,
-                        borderColor: indicatorColor,
-                      }}
-                    />
-                  )}
-                  <div className="flex flex-1 justify-between">
-                    <span className="text-muted-foreground">
-                      {itemConfig?.label || item.name}
-                    </span>
-                    <span className="font-mono font-medium tabular-nums text-foreground">
-                      {item.value?.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              )
-            }
-          )}
+
+    return (
+      <div
+        key={item.dataKey || index}
+        className={cn("flex w-full items-center gap-2")}
+      >
+        {!hideIndicator && (
+          <div
+            className={cn(
+              "shrink-0 rounded",
+              indicator === "dot" && "h-2.5 w-2.5",
+              indicator === "line" && "w-1 h-4",
+              indicator === "dashed" && "w-0 h-4 border border-dashed bg-transparent"
+            )}
+            style={{
+              backgroundColor: indicatorColor,
+              borderColor: indicatorColor,
+            }}
+          />
+        )}
+        <div className="flex flex-1 justify-between">
+          <span className="text-muted-foreground">
+            {itemConfig?.label || item.name}
+          </span>
+          <span className="font-mono font-medium tabular-nums text-foreground">
+            {typeof item.value === "number" ? item.value.toLocaleString() : item.value}
+          </span>
+        </div>
+      </div>
+    )
+  }
+)}
+
         </div>
       </div>
     )
@@ -232,7 +234,7 @@ const ChartLegendContent = React.forwardRef<
       color?: string
       dataKey?: string
       payload?: Record<string, unknown>
-      [key: string]: any
+      [key: string]: unknown
     }[]
     verticalAlign?: "top" | "bottom" | "middle"
     hideIcon?: boolean
