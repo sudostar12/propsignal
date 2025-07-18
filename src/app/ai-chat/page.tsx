@@ -1,11 +1,13 @@
 // src/app/ai-chat/page.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { Check, Copy, ThumbsDown, ThumbsUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
+//import remarkGfm from "remark-gfm";
 
 // ✅ Define the structure for chat messages
 type Message = {
@@ -15,8 +17,7 @@ type Message = {
   feedbackGiven?: "positive" | "negative";
 };
 
-
-export default function AIChatPage() {
+function AIChatPageInner() {
   const MAX_CHARS = 300;
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("query") || "";
@@ -84,7 +85,12 @@ export default function AIChatPage() {
     if (data.clarification_count) setClarificationCount(data.clarification_count);
 
     const assistantReply = data.reply || data.message || "Sorry, I couldn't process your request.";
-    setMessages([...updatedMessages, { role: "assistant", content: assistantReply, uuid: data.uuid }]);
+    // ✅ Post-process assistantReply to insert line breaks between metrics
+    const formattedReply = assistantReply
+    .replace(/•\s*/g, "\n- ") // Convert dots to markdown-style list
+    .replace(/(?<!\n)-/g, "\n-"); // Ensure each list starts on a new line
+
+    setMessages([...updatedMessages, { role: "assistant", content: formattedReply, uuid: data.uuid }]);
     setSuggestions(data.suggestions || []);
   }
 
@@ -108,12 +114,12 @@ export default function AIChatPage() {
               </div>
             ) : (
               <motion.div
-                initial={{ opacity: 0, y: 4 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.1 }}
-                className="flex items-start gap-3 pt-1 pb-2"
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="flex items-start gap-3 pt-4 border-t border-gray-100"
               >
-                {/* ✅ Figma-style AI response layout with logo */}
+                {/* ✅ AI response with logo */}
                 <div className="p-[1.6px] rounded-[7.17px] border border-white bg-[linear-gradient(149deg,rgba(255,255,255,0.5)_0%,rgba(39,166,193,0.05)_41%,rgba(39,166,193,0.14)_100%)] shadow-[24px_24px_40px_rgba(24,61,130,0.1)] backdrop-blur-[4.8px]">
                   <div className="w-[28.8px] h-[28.8px] bg-gradient-to-b from-[#28C381] to-[#27A4C8] rounded-[8px] flex items-center justify-center">
                     <Image
@@ -124,36 +130,95 @@ export default function AIChatPage() {
                     />
                   </div>
                 </div>
-                <div className="bg-white shadow-md rounded-xl px-4 py-3 text-[#3D4540] font-dm-sans text-sm max-w-[800px] leading-relaxed whitespace-pre-line">
-                  {m.content}
-                </div>
+                {/* ✅ AI response layout */}
+                <div className="prose prose-sm max-w-none text-[#3D4540] font-dm-sans">
+<ReactMarkdown
+  components={{
+    h1: ({ children }) => (
+      <h1 className="text-base font-semibold text-[#282D2A] mb-4">{children}</h1>
+    ),
+    h2: ({ children }) => (
+      <h2 className="text-base font-semibold text-[#282D2A] mb-3">{children}</h2>
+    ),
+    p: ({ children }) => (
+      <p className="text-m text-[#3D4540] leading-relaxed mt-2 first:mt-0 last:mt-3">
+        {children}
+      </p>
+    ),
+    ul: ({ children }) => (
+      <ul className="list-none pl-0 space-y-2 mb-3">{children}</ul> // extra space after list
+    ),
+li: ({ children }) => (
+  <li className="relative pl-5 text-m text-[#3D4540] leading-relaxed mb-1">
+    <span className="absolute left-0 top-2 w-1.5 h-1.5 bg-[#28C381] rounded-full" />
+    {children}
+  </li>
+),
+
+    strong: ({ children }) => (
+      <strong className="font-semibold text-[#282D2A]">{children}</strong>
+    ),
+    // Optional: handle <br/> breaks nicely
+    br: () => <span className="block h-3" />,
+  }}
+>
+  {m.content}
+</ReactMarkdown>
+
+
+</div>
+
               </motion.div>
             )}
 
             {/* ✅ Feedback & Copy Section */}
-            {m.role === "assistant" && m.uuid && i === messages.length - 1 && (
-  <div className="flex items-center gap-4 text-xs text-gray-500 pl-[40px] mt-1">
+{m.role === "assistant" && m.uuid && i === messages.length - 1 && (
+  <div className="flex items-center gap-3 text-xs text-gray-500 pl-[40px] pt-1">
+    {/* ✅ Copy Button */}
     <button
       onClick={() => handleCopy(m.uuid!, m.content)}
-      className="flex items-center gap-1 hover:text-blue-600"
+      className="flex items-center gap-1 hover:text-blue-600 transition"
+      title="Copy this response"
     >
-      {copiedUuid === m.uuid ? <><Check size={16} /> Copied</> : <><Copy size={16} /> Copy</>}
+      {copiedUuid === m.uuid ? (
+        <>
+          <Check size={16} />
+          <span>Copied</span>
+        </>
+      ) : (
+        <>
+          <Copy size={16} />
+          <span>Copy</span>
+        </>
+      )}
     </button>
-    <span className="text-gray-300">|</span>
+
+    <div className="h-4 w-px bg-gray-300" />
+
+    {/* ✅ Feedback */}
     {m.feedbackGiven ? (
-      <span className="text-green-500">Feedback recorded</span>
+      <span className="text-green-600 font-medium">Thanks for the feedback</span>
     ) : (
-      <>
-        <button onClick={() => sendFeedback(m.uuid!, "positive")} className="hover:text-green-600">
-          <ThumbsUp size={16} />
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => sendFeedback(m.uuid!, "positive")}
+          className="p-1 rounded-full hover:bg-gray-100 transition"
+          title="Helpful"
+        >
+          <ThumbsUp size={18} className="text-gray-600 hover:text-green-600" />
         </button>
-        <button onClick={() => sendFeedback(m.uuid!, "negative")} className="hover:text-red-600">
-          <ThumbsDown size={16} />
+        <button
+          onClick={() => sendFeedback(m.uuid!, "negative")}
+          className="p-1 rounded-full hover:bg-gray-100 transition"
+          title="Not helpful"
+        >
+          <ThumbsDown size={18} className="text-gray-600 hover:text-red-500" />
         </button>
-      </>
+      </div>
     )}
   </div>
 )}
+
 
           </div>
         ))}
@@ -211,5 +276,12 @@ export default function AIChatPage() {
         </div>
       </div>
     </div>
+  );
+}
+export default function AIChatPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-500">Loading chat...</div>}>
+      <AIChatPageInner />
+    </Suspense>
   );
 }
