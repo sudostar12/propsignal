@@ -59,6 +59,11 @@ export function HeroSection() {
         placeholder="Ask me anything about Australian residential properties..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  }}
         className="w-full text-sm font-medium text-black font-dm-sans placeholder:text-gray-400 focus:outline-none"
       />
 
