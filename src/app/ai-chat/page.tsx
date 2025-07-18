@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, Suspense } from "react";
 import { Check, Copy, ThumbsDown, ThumbsUp } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
 // ✅ Message type definition
@@ -15,6 +15,7 @@ type Message = {
 
 function ChatAppWrapper() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialQuery = searchParams.get("query") || "";
 
   const MAX_CHARS = 300;
@@ -31,15 +32,23 @@ function ChatAppWrapper() {
   }, [messages]);
 
   // ✅ Trigger first message automatically from URL query param
-  useEffect(() => {
-    if (
-      initialQuery &&
-      messages.length === 0
-    ) {
-      sendMessage(initialQuery);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+useEffect(() => {
+  if (initialQuery && messages.length === 0) {
+    const sendInitialQuery = async () => {
+      try {
+        await new Promise((res) => setTimeout(res, 50)); // slight delay
+        await sendMessage(initialQuery);
+        router.replace("/ai-chat");
+      } catch (err) {
+        console.error("[Auto AI Trigger Error]", err);
+      }
+    };
+
+    sendInitialQuery();
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
 
   async function sendMessage(msg?: string) {
     const messageToSend = msg || input;
