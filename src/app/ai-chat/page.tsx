@@ -1,11 +1,9 @@
-// src/app/ai-chat/page.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { Check, Copy, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { useSearchParams } from 'next/navigation';
-
 
 // ✅ Message type definition
 type Message = {
@@ -15,70 +13,33 @@ type Message = {
   feedbackGiven?: "positive" | "negative";
 };
 
-export default function AIChatPage() {
-  console.log("AIChatPage loaded");
+function ChatAppWrapper() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("query") || "";
+
   const MAX_CHARS = 300;
   const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [copiedUuid, setCopiedUuid] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [clarificationCount, setClarificationCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const [messages, setMessages] = useState<Message[]>([
-  {
-    role: "assistant",
-    content: "Hi there! I can help you analyse any Australian suburb. Ask me something like:\n\n• Compare Box Hill and Doncaster\n• What’s the rental yield in Ballarat?\n• Is Cranbourne a good family suburb?"
-  }
-]);
 
-
-const searchParams = useSearchParams();
-const initialQuery = searchParams.get('query');
-
-// ...
-useEffect(() => {
-  if (!initialQuery) return;
-  if (messages.length === 0) {
-    sendMessage(initialQuery);
-  }
-}, [initialQuery]);
-
-
-  // 1. Scroll to bottom when messages update
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-// 2. Auto-send initial query once on load
-useEffect(() => {
-  if (initialQuery && messages.length === 1 && messages[0].role === 'assistant') {
-    sendMessage(initialQuery);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
 
-
-  const sendFeedback = async (uuid: string | undefined, feedback: "positive" | "negative") => {
-    if (!uuid) return;
-    await fetch("/api/feedback", {
-      method: "POST",
-      body: JSON.stringify({ uuid, feedback }),
-      headers: { "Content-Type": "application/json" },
-    });
-    setMessages((prev) =>
-      prev.map((msg) => (msg.uuid === uuid ? { ...msg, feedbackGiven: feedback } : msg))
-    );
-  };
-
-  const handleCopy = (uuid: string, content: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedUuid(uuid);
-    setTimeout(() => setCopiedUuid(null), 2000);
-  };
-
-  const handleSuggestionClick = async (suggestion: string) => {
-    setInput(suggestion);
-    await sendMessage(suggestion);
-  };
+  // ✅ Trigger first message automatically from URL query param
+  useEffect(() => {
+    if (
+      initialQuery &&
+      messages.length === 0
+    ) {
+      sendMessage(initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function sendMessage(msg?: string) {
     const messageToSend = msg || input;
@@ -103,25 +64,37 @@ useEffect(() => {
     setMessages([
       ...updatedMessages,
       { role: "assistant", content: assistantReply, uuid: data.uuid },
-    
-  ] as Message[]);
+    ]);
     setSuggestions(data.suggestions || []);
   }
 
+  const sendFeedback = async (uuid: string | undefined, feedback: "positive" | "negative") => {
+    if (!uuid) return;
+    await fetch("/api/feedback", {
+      method: "POST",
+      body: JSON.stringify({ uuid, feedback }),
+      headers: { "Content-Type": "application/json" },
+    });
+    setMessages((prev) =>
+      prev.map((msg) => (msg.uuid === uuid ? { ...msg, feedbackGiven: feedback } : msg))
+    );
+  };
+
+  const handleCopy = (uuid: string, content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedUuid(uuid);
+    setTimeout(() => setCopiedUuid(null), 2000);
+  };
+
+  const handleSuggestionClick = async (suggestion: string) => {
+    setInput(suggestion);
+    await sendMessage(suggestion);
+  };
+
   return (
     <div className="w-full min-h-screen bg-white flex flex-col items-center gap-4 px-6 py-4">
-      {/* Back button */}
-      <div className="self-start">
-        <button className="flex items-center gap-2 border border-gray-200 rounded-md px-3 py-2 shadow-sm">
-          <svg width="16" height="16" fill="#7D8C83">
-            <rect x="2.17" y="3.5" width="11.67" height="9" />
-          </svg>
-          <span className="text-sm font-medium text-[#3D4540]">Back</span>
-        </button>
-      </div>
-
-      {/* Chat Area */}
       <div className="w-full max-w-2xl flex flex-col gap-6 flex-grow">
+        {/* Chat messages */}
         {messages.map((m, i) => (
           <div key={i} className="space-y-1">
             {m.role === "user" ? (
@@ -144,7 +117,7 @@ useEffect(() => {
               </motion.div>
             )}
 
-            {/* Feedback + Copy */}
+            {/* Copy + Feedback */}
             {m.role === "assistant" && m.uuid && i === messages.length - 1 && (
               <div className="flex items-center gap-4 text-xs text-gray-500">
                 <button
@@ -158,12 +131,10 @@ useEffect(() => {
                   <span className="text-green-500">Feedback recorded</span>
                 ) : (
                   <>
-                    <button onClick={() => sendFeedback(m.uuid!, "positive")}
-                      className="hover:text-green-600">
+                    <button onClick={() => sendFeedback(m.uuid!, "positive")} className="hover:text-green-600">
                       <ThumbsUp size={16} />
                     </button>
-                    <button onClick={() => sendFeedback(m.uuid!, "negative")}
-                      className="hover:text-red-600">
+                    <button onClick={() => sendFeedback(m.uuid!, "negative")} className="hover:text-red-600">
                       <ThumbsDown size={16} />
                     </button>
                   </>
@@ -223,5 +194,13 @@ useEffect(() => {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AIChatPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-gray-400 text-sm">Loading chat...</div>}>
+      <ChatAppWrapper />
+    </Suspense>
   );
 }
