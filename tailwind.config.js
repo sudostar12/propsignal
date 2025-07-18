@@ -23,6 +23,10 @@ module.exports = {
       },
     },
     extend: {
+        fontFamily: {
+    sans: ['"DM Sans"', 'sans-serif'], // override default
+    'dm-sans': ['"DM Sans"', 'sans-serif'], // optional named alias
+  },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

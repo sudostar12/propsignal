@@ -2,57 +2,90 @@
 
 import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
-import { Search } from "lucide-react"
+//import { Input } from "@/app/components/ui/input"
+//import { Search } from "lucide-react"
+import { GraphUpIcon } from "@/app/components/ui/custom-icons"
+import { UsersGroupIcon } from "@/app/components/ui/icon-userGroup"
+import { ChatMoneyIcon } from "@/app/components/ui/icon-chatMoney"
+import { useRouter } from 'next/navigation';
+
+
 
 export function HeroSection() {
   const [query, setQuery] = useState("")
+  const router = useRouter();
+  
+   const handleSearch = () => {
+    if (query.trim()) {
+      console.log("Search triggered for:", query);
+      // Encode query and route to ai-chat
+      const encodedQuery = encodeURIComponent(query.trim());
+      router.push(`/ai-chat?query=${encodedQuery}`);
+    }
+  };
 
   const sampleQueries = [
-    "Compare Box Hill and Doncaster for investment",
-    "What's the rental yield in Ballarat?",
-    "Is Cranbourne a good family suburb?",
+    {
+      text: "Compare Box Hill and Doncaster for investment",
+      icon: <GraphUpIcon className="w-6 h-6 text-[#28C381]" />,
+    },
+    {
+      text: "What's the rental yield in Ballarat?",
+      icon: <ChatMoneyIcon className="w-6 h-6 text-[#28C381]" />,
+    },
+    {
+      text: "Is Cranbourne a good family suburb?",
+      icon: <UsersGroupIcon className="w-6 h-6 text-[#28C381]" />,
+    },
   ]
 
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto text-center">
-        <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-          Unlock Smarter Property <span className="text-teal-500">Insights with AI</span>
-        </h1>
-
+<h1 className="text-5xl md:text-6xl font-semibold text-center font-dm-sans mb-6 bg-gradient-to-r from-[#28C381] to-[#27A4C8] bg-clip-text text-transparent">
+  Unlock Smarter Property Insights with AI
+</h1>
         <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
           Instantly discover the investment potential of any Australian suburb — powered by real data and AI-driven
           analysis.
         </p>
 
-        <div className="max-w-2xl mx-auto mb-8">
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Ask me anything..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full h-14 pl-6 pr-14 text-lg border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-0"
-            />
-            <Button
-              size="sm"
-              className="absolute right-2 top-2 h-10 w-10 p-0 bg-gray-200 hover:bg-gray-300 text-gray-600"
-            >
-              <Search className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+<div className="max-w-2xl mx-auto mb-8">
+  <div className="p-[2px] rounded-[16px] bg-[radial-gradient(circle,_#00FF92,_#0AC4FA)]">
+    <div className="flex items-center justify-between bg-white rounded-[14px] p-3">
+      {/* Input Field */}
+      <input
+        type="text"
+        placeholder="Ask me anything about Australian residential properties..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full text-sm font-medium text-black font-dm-sans placeholder:text-gray-400 focus:outline-none"
+      />
+
+      {/* Send Button */}
+      <Button
+        className="w-6 h-6 p-2 bg-gradient-to-b from-[#28C381] to-[#27A4C8] rounded-full flex justify-center items-center"
+       onClick={handleSearch}
+      >
+        <div className="w-[9px] h-[11.67px] relative bg-white" />
+      </Button>
+    </div>
+  </div>
+</div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          {sampleQueries.map((sampleQuery, index) => (
+          {sampleQueries.map((item, index) => (
             <button
               key={index}
-              onClick={() => setQuery(sampleQuery)}
-              className="flex items-center space-x-2 px-4 py-2 bg-white rounded-full border border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-colors text-sm text-gray-700"
+              onClick={() => setQuery(item.text)}
+               className="flex items-center gap-3 px-4 py-3 w-[280px] bg-white rounded-xl shadow-[0px_1px_2px_rgba(2,130,78,0.05)] border border-[#F4F5F5] text-sm text-gray-900 hover:shadow-md transition"
             >
-              <div className="w-2 h-2 bg-teal-500 rounded-full" />
-              <span>{sampleQuery}</span>
+              <div className="shrink-0">
+                {item.icon}
+              </div>
+              <span className="text-left font-medium text-[#0B3725] leading-tight">
+                {item.text} 
+              </span>
             </button>
           ))}
         </div>
