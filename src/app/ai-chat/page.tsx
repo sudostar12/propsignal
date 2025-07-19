@@ -140,7 +140,7 @@ useEffect(() => {
 
 <div
       id="chat-container"
-      className="flex-1 overflow-y-auto px-4 pb-[140px] scroll-smooth max-w-2xl w-full mx-auto"
+      className="flex-1 overflow-y-auto px-4 pb-[140px] scroll-smooth max-w-2xl w-full mx-auto break-words" //break-words ensures long strings don't overflow
     >
 
         {messages.map((m, i) => (
@@ -311,11 +311,12 @@ li: ({ children }) => (
 
      
 {/* ✅ Redesigned fixed input box with subtext */}
-<div className="w-full fixed bottom-0 bg-white px-4 pt-2 pb-3 z-10 border-t border-gray-100">
+<div className="w-full fixed bottom-0 bg-white px-3 pt-2 pb-[env(safe-area-inset-bottom,1rem)] z-10 border-t border-gray-100">
+
   <div className="max-w-2xl mx-auto w-full space-y-2">
 
     {/* Input field */}
-    <div className="w-full flex items-center rounded-[10px] border border-gray-300 bg-white px-4 py-6 shadow-sm">
+    <div className="w-full flex items-center rounded-[10px] border border-gray-300 bg-white px-4 py-6 shadow-sm sm:px-4 sm:py-6">
       <input
         type="text"
         value={input}
@@ -325,7 +326,7 @@ li: ({ children }) => (
         }}
         onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         placeholder="Ask anything about suburbs, prices, rent, or growth..."
-        className="flex-1 text-sm font-medium text-[#3D4540] placeholder:text-gray-400 outline-none bg-transparent"
+        className="flex-1 text-sm font-medium text-[#3D4540] placeholder:text-gray-400 outline-none bg-white" //bg-white prevents ios/Andriod dark mode from turning it black.
       />
       <span className="text-xs text-gray-400">
         {input.trim().length} / {MAX_CHARS}
