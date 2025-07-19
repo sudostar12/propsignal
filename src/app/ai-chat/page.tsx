@@ -30,6 +30,9 @@ function AIChatPageInner() {
   const [isTyping, setIsTyping] = useState(false);
   const [clarificationCount, setClarificationCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  // ✅ Track if scroll is not at bottom
+const [showScrollDown, setShowScrollDown] = useState(false);
+
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,6 +46,27 @@ function AIChatPageInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  //to enable toggle arrow for scroll view.
+useEffect(() => {
+  const container = document.getElementById("chat-container");
+  if (!container) return;
+
+  const handleScroll = () => {
+    const isNearBottom =
+      Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 40;
+    setShowScrollDown(!isNearBottom); // Show arrow only if NOT near bottom
+  };
+
+  // Attach and trigger once
+  container.addEventListener("scroll", handleScroll);
+  handleScroll(); // ✅ Initial check in case user reloads mid-scroll
+
+  // Cleanup
+  return () => container.removeEventListener("scroll", handleScroll);
+}, []);
+
+
 
   const sendFeedback = async (uuid: string | undefined, feedback: "positive" | "negative") => {
     if (!uuid) return;
@@ -94,8 +118,16 @@ function AIChatPageInner() {
     setSuggestions(data.suggestions || []);
   }
 
+  //chat page view code
   return (
-    <div className="w-full h-screen bg-white flex flex-col items-center">
+    <div className="w-full h-screen bg-white flex flex-col items-center relative overflow-visible">
+
+
+{/*Temporary debug for scroll-down feature testing*
+<p className="text-xs text-red-600 fixed top-4 right-4 z-50"> 
+  Scroll Button Visible: {showScrollDown ? "✅ Yes" : "❌ No"}
+</p>
+*/}
 
       <div className="self-start">
         <button className="flex items-center gap-2 border border-gray-200 rounded-md px-3 py-2 shadow-sm">
@@ -106,8 +138,10 @@ function AIChatPageInner() {
         </button>
       </div>
 
-      <div className="w-full max-w-2xl flex flex-col gap-6 overflow-y-auto px-4 pb-[100px] h-[calc(100vh-140px)]">
-
+<div
+      id="chat-container"
+      className="flex-1 overflow-y-auto px-4 pb-[140px] scroll-smooth max-w-2xl w-full mx-auto"
+    >
 
         {messages.map((m, i) => (
           <div key={i} className="space-y-1">
@@ -252,6 +286,28 @@ li: ({ children }) => (
 )}
 
       </div>
+
+{/* ✅ Scroll to bottom button */}
+{showScrollDown && (
+  <button
+    onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
+    className="fixed bottom-28 left-1/2 transform -translate-x-1/2 z-20 p-2 rounded-full bg-white border shadow-md hover:bg-gray-100 transition"
+    title="Scroll to latest"
+  >
+    {/* Down arrow icon */}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-5 h-5 text-gray-600"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+)}
+
+
 
      
 {/* ✅ Redesigned fixed input box with subtext */}
