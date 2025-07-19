@@ -95,7 +95,8 @@ function AIChatPageInner() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-white flex flex-col items-center gap-4 px-6 py-4">
+    <div className="w-full h-screen bg-white flex flex-col items-center">
+
       <div className="self-start">
         <button className="flex items-center gap-2 border border-gray-200 rounded-md px-3 py-2 shadow-sm">
           <svg width="16" height="16" fill="#7D8C83">
@@ -105,7 +106,9 @@ function AIChatPageInner() {
         </button>
       </div>
 
-      <div className="w-full max-w-2xl flex flex-col gap-6 flex-grow">
+      <div className="w-full max-w-2xl flex flex-col gap-6 overflow-y-auto px-4 pb-[100px] h-[calc(100vh-140px)]">
+
+
         {messages.map((m, i) => (
           <div key={i} className="space-y-1">
             {m.role === "user" ? (
@@ -250,31 +253,49 @@ li: ({ children }) => (
 
       </div>
 
-      <div className="w-full max-w-2xl px-4 py-3 bg-white border border-gray-200 shadow-md rounded-xl flex items-center justify-between">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value.length <= MAX_CHARS) setInput(value);
-          }}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Ask me anything..."
-          className="w-full flex-1 outline-none text-sm font-medium text-[#68756D] placeholder:text-gray-400"
-        />
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">
-            {input.trim().length} / {MAX_CHARS}
-          </span>
-          <button
-            disabled={!input.trim()}
-            onClick={() => sendMessage()}
-            className="w-6 h-6 rounded-full bg-[#C5CBC7] flex items-center justify-center disabled:opacity-50"
-          >
-            <div className="w-[9px] h-[11px] bg-white" />
-          </button>
-        </div>
-      </div>
+     
+{/* ✅ Redesigned fixed input box with subtext */}
+<div className="w-full fixed bottom-0 bg-white px-4 pt-2 pb-3 z-10 border-t border-gray-100">
+  <div className="max-w-2xl mx-auto w-full space-y-2">
+
+    {/* Input field */}
+    <div className="w-full flex items-center rounded-[10px] border border-gray-300 bg-white px-4 py-6 shadow-sm">
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => {
+          const value = e.target.value;
+          if (value.length <= MAX_CHARS) setInput(value);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+        placeholder="Ask anything about suburbs, prices, rent, or growth..."
+        className="flex-1 text-sm font-medium text-[#3D4540] placeholder:text-gray-400 outline-none bg-transparent"
+      />
+      <span className="text-xs text-gray-400">
+        {input.trim().length} / {MAX_CHARS}
+      </span>
+    <button
+  disabled={input.trim().length < 1}
+  onClick={() => sendMessage()}
+  className={`ml-3 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+    input.trim().length >= 3
+      ? "bg-[#28C381] hover:bg-[#1fa56b]"
+      : "bg-[#C5CBC7] opacity-70"
+  }`}
+>
+  <div className="w-[9px] h-[11px] bg-white" />
+</button>
+
+    </div>
+
+    {/* Subtext disclaimer */}
+    <p className="text-center text-xs text-gray-400">
+      AI-generated suburb insights. Always verify important property decisions.
+    </p>
+  </div>
+</div>
+
+
     </div>
   );
 }
