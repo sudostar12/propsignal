@@ -64,7 +64,7 @@ export function HeroSection() {
       handleSearch();
     }
   }}
-        className="w-full text-sm font-medium text-black font-dm-sans placeholder:text-gray-400 focus:outline-none"
+        className="w-full text-sm font-medium text-black font-dm-sans placeholder:text-gray-400 bg-white focus:outline-none"
       />
 
       {/* Send Button */}

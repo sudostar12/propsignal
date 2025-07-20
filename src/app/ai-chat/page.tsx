@@ -32,6 +32,7 @@ function AIChatPageInner() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   // ✅ Track if scroll is not at bottom
 const [showScrollDown, setShowScrollDown] = useState(false);
+const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
 
   useEffect(() => {
@@ -49,22 +50,47 @@ const [showScrollDown, setShowScrollDown] = useState(false);
 
   //to enable toggle arrow for scroll view.
 useEffect(() => {
-  const container = document.getElementById("chat-container");
-  if (!container) return;
-
+  // Use window scroll detection - works on all devices and screen sizes
   const handleScroll = () => {
-    const isNearBottom =
-      Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 40;
-    setShowScrollDown(!isNearBottom); // Show arrow only if NOT near bottom
+    console.log("🌐 WINDOW SCROLL EVENT FIRED!");
+    
+    // Get page scroll values (not container scroll values)
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+    const clientHeight = window.innerHeight;
+    const scrollDiff = scrollHeight - scrollTop - clientHeight;
+    
+    // Account for input box height - adjust for mobile if needed
+    const inputBoxHeight = 160;
+    const buffer = 50;
+    const adjustedThreshold = inputBoxHeight + buffer;
+    
+    const isNearBottom = scrollDiff <= adjustedThreshold;
+    
+    // Debug logging to see if values change when scrolling
+    console.log("🌐 Window Scroll Values:", {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+      scrollDiff,
+      threshold: adjustedThreshold,
+      isNearBottom,
+      showScrollDown: !isNearBottom
+    });
+    
+    setShowScrollDown(!isNearBottom);
   };
 
-  // Attach and trigger once
-  container.addEventListener("scroll", handleScroll);
-  handleScroll(); // ✅ Initial check in case user reloads mid-scroll
+  // Listen to WINDOW scroll events (not container scroll)
+  window.addEventListener("scroll", handleScroll);
+  handleScroll(); // Check initial state
 
-  // Cleanup
-  return () => container.removeEventListener("scroll", handleScroll);
-}, []);
+  // Cleanup function
+  return () => {
+    console.log("🧹 Removing window scroll listener");
+    window.removeEventListener("scroll", handleScroll);
+  };
+}, [messages]); // Re-check when messages change
 
 
 
@@ -120,7 +146,10 @@ useEffect(() => {
 
   //chat page view code
   return (
-    <div className="w-full h-screen bg-white flex flex-col items-center relative overflow-visible">
+    <div className="w-full min-h-screen bg-white flex justify-center relative">
+
+  {/* ✅ New flex-1 wrapper to enable scroll behavior */}
+  <div className="flex flex-col w-full max-w-[700px] min-h-screen">
 
 
 {/*Temporary debug for scroll-down feature testing*
@@ -138,10 +167,10 @@ useEffect(() => {
         </button>
       </div>
 
-<div
-      id="chat-container"
-      className="flex-1 overflow-y-auto px-4 pb-[140px] scroll-smooth max-w-2xl w-full mx-auto break-words" //break-words ensures long strings don't overflow
-    >
+<div ref={chatContainerRef}
+     id="chat-container"
+     className="flex-1 px-4 pb-[160px] break-words"
+>
 
         {messages.map((m, i) => (
           <div key={i} className="space-y-1">
@@ -168,7 +197,7 @@ useEffect(() => {
                   </div>
                 </div>
                 {/* ✅ AI response layout */}
-                <div className="prose prose-sm max-w-none text-[#3D4540] font-dm-sans">
+                <div className="prose prose-sm max-w-none text-[#3D4540] font-dm-sans break-words">
 <ReactMarkdown
   components={{
     h1: ({ children }) => (
@@ -291,7 +320,8 @@ li: ({ children }) => (
 {showScrollDown && (
   <button
     onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
-    className="fixed bottom-28 left-1/2 transform -translate-x-1/2 z-20 p-2 rounded-full bg-white border shadow-md hover:bg-gray-100 transition"
+    className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-50 p-3 rounded-full bg-white border-2 border-gray-300 shadow-lg hover:bg-gray-100 transition-all duration-200 
+               md:bottom-32 sm:bottom-28" // Responsive positioning
     title="Scroll to latest"
   >
     {/* Down arrow icon */}
@@ -307,13 +337,13 @@ li: ({ children }) => (
   </button>
 )}
 
-
+</div>
 
      
 {/* ✅ Redesigned fixed input box with subtext */}
 <div className="w-full fixed bottom-0 bg-white px-3 pt-2 pb-[env(safe-area-inset-bottom,1rem)] z-10 border-t border-gray-100">
 
-  <div className="max-w-2xl mx-auto w-full space-y-2">
+  <div className="max-w-[700px] mx-auto w-full space-y-2">
 
     {/* Input field */}
     <div className="w-full flex items-center rounded-[10px] border border-gray-300 bg-white px-4 py-6 shadow-sm sm:px-4 sm:py-6">
@@ -347,7 +377,7 @@ li: ({ children }) => (
 
     {/* Subtext disclaimer */}
     <p className="text-center text-xs text-gray-400">
-      AI-generated suburb insights. Always verify important property decisions.
+      AI-generated insights. Always verify important property decisions.
     </p>
   </div>
 </div>
