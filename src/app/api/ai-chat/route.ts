@@ -35,9 +35,10 @@ export async function POST(req: NextRequest) {
 
     let topic = questionAnalysis.topic;
     //const targetAreas = questionAnalysis.targetAreas || [];
-    let area: string | undefined = undefined;
-    const suburb1 = questionAnalysis.targetAreas[0];
-    const suburb2 = questionAnalysis.targetAreas[1];
+let area: string | undefined = undefined;
+const suburb1 = questionAnalysis.targetAreas?.[0] || '';
+const suburb2 = questionAnalysis.targetAreas?.[1] || '';
+
 
 
 if (topic === 'compare' && questionAnalysis.targetAreas.length > 1) {
@@ -135,11 +136,46 @@ else {
 
       const aiFallbackMessage = await generateGeneralReply(messages, topic);
 
-      return NextResponse.json({
-      reply: aiFallbackMessage,
-      clarificationNeeded: true,
-      options: []
-      });
+        // 🔧 Add predefined suggestions here too
+  let suggestions: string[] = [];
+  if (topic && typeof topic === 'string') {
+    const topicSuggestions = getSuggestionsForTopic(topic);
+    if (Array.isArray(topicSuggestions) && topicSuggestions.length > 0) {
+      console.log('[DEBUG-SUGGEST] Selected suggestions (fallback path):', topicSuggestions);
+      suggestions = topicSuggestions;
+    }
+  }
+
+     // ✅ Log fallback message to DB
+console.log('[DEBUG route.ts] Logging fallback AI response');
+const { data: fallbackLog, error: fallbackLogError } = await supabase
+  .from('log_ai_chat')
+  .insert({
+    userInput,
+    AIResponse: aiFallbackMessage,
+    intent: topic,
+    suburb: null,
+    isVague: true,
+    lga: null,
+    state: null
+  })
+  .select('uuid');
+
+if (fallbackLogError) {
+  console.error('[ERROR route.ts] Fallback logging failed:', fallbackLogError);
+} else {
+  console.log('[DEBUG route.ts] Fallback logged successfully, UUID:', fallbackLog?.[0]?.uuid);
+}
+
+// ✅ Return fallback + uuid + suggestions
+return NextResponse.json({
+  reply: aiFallbackMessage,
+  clarificationNeeded: true,
+  options: [],
+  uuid: fallbackLog?.[0]?.uuid || null,
+  suggestions
+});
+
     }
 
     if (suburbDetection.possible_suburb) {
@@ -189,10 +225,11 @@ if (!lga && currentContext.lga) {
   lga = currentContext.lga;
 }
 
-// ✅ At this point, you know if area is still undefined, it's an error
-if (!area && topic !== 'compare') {
-  throw new Error('route.ts error - Area is required for this topic but not found.');
+// ✅ Only throw error if topic requires a suburb and area is not available
+if (!area && ['price', 'crime', 'yield', 'price_growth', 'projects'].includes(topic)) {
+  throw new Error(`route.ts error - Area is required for topic '${topic}' but not found.`);
 }
+
 if (topic !== 'compare') {
  // const areaSafe = area!;
   // You can safely use areaSafe inside this block or below only for non-compare handlers
