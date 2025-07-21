@@ -20,7 +20,7 @@ export function FeaturesSection() {
   ]
 
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-transparent">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-4xl font-bold text-center text-gray-900 mb-16">Why Use Our AI Property Tool?</h2>
 

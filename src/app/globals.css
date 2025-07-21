@@ -25,7 +25,7 @@ body {
 
 body {
   color: var(--foreground);
-  background: var(--background);
+  background: transparent; /* allow Tailwind layout gradient to show */
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

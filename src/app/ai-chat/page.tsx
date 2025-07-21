@@ -2,11 +2,13 @@
 "use client";
 
 import { useEffect, useRef, useState, Suspense } from "react";
-import { Check, Copy, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Check, Copy, ThumbsDown, ThumbsUp, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
+import Link from 'next/link'
+
 //import remarkGfm from "remark-gfm";
 
 // ✅ Define the structure for chat messages
@@ -33,6 +35,8 @@ function AIChatPageInner() {
   // ✅ Track if scroll is not at bottom
 const [showScrollDown, setShowScrollDown] = useState(false);
 const chatContainerRef = useRef<HTMLDivElement | null>(null);
+const [copiedUserIndex, setCopiedUserIndex] = useState<number | null>(null) // this is for the user copy button
+
 
 
   useEffect(() => {
@@ -146,26 +150,24 @@ useEffect(() => {
 
   //chat page view code
   return (
-    <div className="w-full min-h-screen bg-white flex justify-center relative">
+    <div className="w-full min-h-screen flex justify-center relative">
 
   {/* ✅ New flex-1 wrapper to enable scroll behavior */}
-  <div className="flex flex-col w-full max-w-[700px] min-h-screen">
+  <div className="flex flex-col w-full max-w-[700px] min-h-screen px-6 pt-16">
 
 
-{/*Temporary debug for scroll-down feature testing*
-<p className="text-xs text-red-600 fixed top-4 right-4 z-50"> 
-  Scroll Button Visible: {showScrollDown ? "✅ Yes" : "❌ No"}
-</p>
-*/}
+   {/* ✅ Sticky Header */}
+<div className="fixed top-0 left-0 w-full z-30 bg-white/80 backdrop-blur-md border-gray-200 px-4 py-3">
+  <div className="max-w-[700px] mx-auto flex items-center">
+  <Link href="/" className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-[#F4F5F5] rounded-[10px] shadow-[0px_1px_3px_rgba(2,130,78,0.06)] text-[#3D4540] text-sm font-medium font-dm-sans hover:bg-gray-50 transition">
+  {/* Left Arrow Icon */}
+  <ArrowLeft size={16} strokeWidth={2} className="text-[#7D8C83]" />
+  Back
+</Link>
 
-      <div className="self-start">
-        <button className="flex items-center gap-2 border border-gray-200 rounded-md px-3 py-2 shadow-sm">
-          <svg width="16" height="16" fill="#7D8C83">
-            <rect x="2.17" y="3.5" width="11.67" height="9" />
-          </svg>
-          <span className="text-sm font-medium text-[#3D4540]">Back</span>
-        </button>
-      </div>
+  </div>
+</div>
+
 
 <div ref={chatContainerRef}
      id="chat-container"
@@ -175,9 +177,40 @@ useEffect(() => {
         {messages.map((m, i) => (
           <div key={i} className="space-y-1">
             {m.role === "user" ? (
-              <div className="self-end max-w-[600px] bg-[#F4F5F5] px-3 py-2 rounded-lg text-right text-[#3D4540] text-sm font-medium">
-                {m.content}
-              </div>
+<div className="flex flex-col items-end mb-4">
+  {/* ✅ User message bubble */}
+  <div className="relative max-w-[600px] bg-[#F0F5F3] text-[#0B3725] px-4 py-3 rounded-[10px] shadow-sm">
+    <p className="text-sm font-medium leading-relaxed break-words text-right">
+      {m.content}
+    </p>
+  </div>
+
+  {/* ✅ Copy button placed below, not inside bubble */}
+  <button
+    onClick={() => {
+      navigator.clipboard.writeText(m.content)
+      setCopiedUserIndex(i)
+      setTimeout(() => setCopiedUserIndex(null), 2000)
+    }}
+    className="mt-1 flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition"
+    title="Copy this message"
+  >
+    {copiedUserIndex === i ? (
+      <>
+        <Check size={16} />
+        <span>Copied</span>
+      </>
+    ) : (
+      <>
+        <Copy size={16} />
+        <span>Copy</span>
+      </>
+    )}
+  </button>
+</div>
+
+
+
             ) : (
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
@@ -297,7 +330,8 @@ li: ({ children }) => (
               <button
                 key={i}
                 onClick={() => handleSuggestionClick(sug)}
-                className="px-3 py-1 rounded-full bg-gray-100 text-sm hover:bg-teal-50 border"
+                className="px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm text-sm font-medium text-[#0B3725] hover:bg-white border border-[#DCE0DE] transition"
+
               >
                 {sug}
               </button>
@@ -341,12 +375,12 @@ li: ({ children }) => (
 
      
 {/* ✅ Redesigned fixed input box with subtext */}
-<div className="w-full fixed bottom-0 bg-white px-3 pt-2 pb-[env(safe-area-inset-bottom,1rem)] z-10 border-t border-gray-100">
+<div className="w-full fixed bottom-0 px-3 pt-2 pb-[env(safe-area-inset-bottom,1rem)] z-10">
 
   <div className="max-w-[700px] mx-auto w-full space-y-2">
 
     {/* Input field */}
-    <div className="w-full flex items-center rounded-[10px] border border-gray-300 bg-white px-4 py-6 shadow-sm sm:px-4 sm:py-6">
+    <div className="w-full flex items-center rounded-[10px] bg-white border border-gray-300 px-4 py-6 shadow-sm sm:px-4 sm:py-6">
       <input
         type="text"
         value={input}

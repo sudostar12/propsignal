@@ -40,7 +40,7 @@ export function HeroSection() {
   ]
 
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8">
+    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-transparent">
       <div className="max-w-4xl mx-auto text-center">
 <h1 className="text-5xl md:text-6xl font-semibold text-center font-dm-sans mb-6 bg-gradient-to-r from-[#28C381] to-[#27A4C8] bg-clip-text text-transparent">
   Unlock Smarter Property Insights with AI
