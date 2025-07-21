@@ -153,7 +153,7 @@ useEffect(() => {
     <div className="w-full min-h-screen flex justify-center relative">
 
   {/* ✅ New flex-1 wrapper to enable scroll behavior */}
-  <div className="flex flex-col w-full max-w-[700px] min-h-screen px-6 pt-16">
+  <div className="flex flex-col w-full max-w-[700px] min-h-screen px-0 pt-16">
 
 
    {/* ✅ Sticky Header */}
@@ -175,11 +175,11 @@ useEffect(() => {
 >
 
         {messages.map((m, i) => (
-          <div key={i} className="space-y-1">
+          <div key={i} className="mb-4">
             {m.role === "user" ? (
 <div className="flex flex-col items-end mb-4">
   {/* ✅ User message bubble */}
-  <div className="relative max-w-[600px] bg-[#F0F5F3] text-[#0B3725] px-4 py-3 rounded-[10px] shadow-sm">
+  <div className="relative max-w-full sm:max-w-[600px] bg-[#F0F5F3] text-[#0B3725] px-2 py-3 rounded-[10px] shadow-sm">
     <p className="text-sm font-medium leading-relaxed break-words text-right">
       {m.content}
     </p>
@@ -216,11 +216,11 @@ useEffect(() => {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
-                className="flex items-start gap-3 pt-4 border-t border-gray-100"
+                className="flex items-start gap-3 pt-4 border-t border-gray-100 px-4 sm:px-0"
               >
                 {/* ✅ AI response with logo */}
-                <div className="p-[1.6px] rounded-[7.17px] border border-white bg-[linear-gradient(149deg,rgba(255,255,255,0.5)_0%,rgba(39,166,193,0.05)_41%,rgba(39,166,193,0.14)_100%)] shadow-[24px_24px_40px_rgba(24,61,130,0.1)] backdrop-blur-[4.8px]">
-                  <div className="w-[28.8px] h-[28.8px] bg-gradient-to-b from-[#28C381] to-[#27A4C8] rounded-[8px] flex items-center justify-center">
+                <div className="p-[1px] rounded-[7px] border border-white bg-[linear-gradient(149deg,rgba(255,255,255,0.5)_0%,rgba(39,166,193,0.05)_41%,rgba(39,166,193,0.14)_100%)] shadow-[24px_24px_40px_rgba(24,61,130,0.1)] backdrop-blur-[4.8px]">
+                  <div className="w-7 h-7 bg-gradient-to-b from-[#28C381] to-[#27A4C8] rounded-[8px] flex items-center justify-center">
                     <Image
                       src="/PropSignal-logo.svg"
                       alt="PropSignal Logo"

@@ -13,6 +13,14 @@ module.exports = {
     "./src/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
+    safelist: [
+    'from-[rgba(251,251,251,0.06)]',
+    'via-[rgba(39,167,192,0.06)]',
+    'to-[rgba(39,188,146,0.06)]',
+    'from-[rgba(251,251,251,0.12)]',
+    'via-[rgba(39,167,192,0.12)]',
+    'to-[rgba(39,188,146,0.12)]',
+  ],
   prefix: "",
   theme: {
     container: {
