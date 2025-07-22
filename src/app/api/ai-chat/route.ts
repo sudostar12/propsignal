@@ -27,12 +27,10 @@ export async function POST(req: NextRequest) {
     console.log('[DEBUG route.ts] Question analysis:', questionAnalysis);
 
     //let area = questionAnalysis.targetArea;
-    //let topic = questionAnalysis.topic;
     let finalReply = '';
     let isVague = false;
     let lga = null;
     let state = null;
-
     let topic = questionAnalysis.topic;
     //const targetAreas = questionAnalysis.targetAreas || [];
 let area: string | undefined = undefined;
@@ -235,7 +233,7 @@ if (topic !== 'compare') {
   // You can safely use areaSafe inside this block or below only for non-compare handlers
 }
 if ((topic === "yield" || topic === "projects") && !lga) {
-  throw new Error('route.ts error - LGA is required but missing.');
+  throw new Error('route.ts error - LGA is required but missing.'); //22/07 - response can be improved with AI to ask for clarification of lga or suburb. 
 }
 
 if (topic === 'compare') {

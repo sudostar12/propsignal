@@ -9,10 +9,10 @@ export function Footer() {
           <div>
             <p className="text-gray-600 mb-2">Contact us at</p>
             <Link
-              href="mailto:propsignal@gmail.com"
+              href="mailto:support@propsignal.com.au"
               className="flex items-center space-x-2 text-gray-900 hover:text-teal-600 transition-colors"
             >
-              <span>propsignal@gmail.com</span>
+              <span>support@propsignal.com.au</span>
               <ExternalLink className="w-4 h-4" />
             </Link>
           </div>

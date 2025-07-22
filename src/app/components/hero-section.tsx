@@ -2,12 +2,11 @@
 
 import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
-//import { Input } from "@/app/components/ui/input"
-//import { Search } from "lucide-react"
 import { GraphUpIcon } from "@/app/components/ui/custom-icons"
 import { UsersGroupIcon } from "@/app/components/ui/icon-userGroup"
 import { ChatMoneyIcon } from "@/app/components/ui/icon-chatMoney"
 import { useRouter } from 'next/navigation';
+import { ArrowUp } from "lucide-react";
 
 
 
@@ -40,12 +39,12 @@ export function HeroSection() {
   ]
 
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-transparent">
+    <section className="py-20 px-4 sm:px-6 lg:px-8 font-dm-sans bg-transparent">
       <div className="max-w-4xl mx-auto text-center">
-<h1 className="text-5xl md:text-6xl font-semibold text-center font-dm-sans mb-6 bg-gradient-to-r from-[#28C381] to-[#27A4C8] bg-clip-text text-transparent">
+<h1 className="text-5xl md:text-6xl font-semibold text-center mb-6 bg-gradient-to-r from-[#28C381] to-[#27A4C8] bg-clip-text text-transparent leading-[1.1]">
   Unlock Smarter Property Insights with AI
 </h1>
-        <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
+        <p className="text-xl text-gray-600 mt-2 mb-12 max-w-2xl mx-auto leading-relaxed">
           Instantly discover the investment potential of any Australian suburb — powered by real data and AI-driven
           analysis.
         </p>
@@ -69,11 +68,18 @@ export function HeroSection() {
 
       {/* Send Button */}
       <Button
-        className="w-6 h-6 p-2 bg-gradient-to-b from-[#28C381] to-[#27A4C8] rounded-full flex justify-center items-center"
-       onClick={handleSearch}
-      >
-        <div className="w-[9px] h-[11.67px] relative bg-white" />
-      </Button>
+  className={`w-6 h-6 p-2 rounded-full flex justify-center items-center transition ${
+    query.length < 3
+      ? 'bg-gray-300 cursor-not-allowed'
+      : 'bg-gradient-to-b from-[#28C381] to-[#27A4C8] hover:opacity-90'
+  }`}
+  onClick={handleSearch}
+  disabled={query.length < 3}
+  aria-label="Send Query"
+>
+  <ArrowUp size={14} className="text-white" />
+</Button>
+
     </div>
   </div>
 </div>

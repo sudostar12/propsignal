@@ -36,6 +36,7 @@ function AIChatPageInner() {
 const [showScrollDown, setShowScrollDown] = useState(false);
 const chatContainerRef = useRef<HTMLDivElement | null>(null);
 const [copiedUserIndex, setCopiedUserIndex] = useState<number | null>(null) // this is for the user copy button
+const hasSentInitialQuery = useRef(false);
 
 
 
@@ -43,14 +44,15 @@ const [copiedUserIndex, setCopiedUserIndex] = useState<number | null>(null) // t
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    if (initialQuery && messages.length === 0) {
-      sendMessage(initialQuery);
-      const newUrl = "/ai-chat";
-      router.replace(newUrl);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+useEffect(() => {
+  if (initialQuery && messages.length === 0 && !hasSentInitialQuery.current) {
+    hasSentInitialQuery.current = true;
+    sendMessage(initialQuery);
+    router.replace("/ai-chat");
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
 
   //to enable toggle arrow for scroll view.
 useEffect(() => {

@@ -18,30 +18,36 @@ export function NewsletterSection() {
 
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8 bg-transparent">
-      <div className="max-w-4xl mx-auto">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Get Smarter Property Insights in Your Inbox</h2>
-            <p className="text-gray-600 leading-relaxed">
-              Subscribe for free to receive AI-powered suburb analysis, market trends, and data-driven tips
-            </p>
-          </div>
+      <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+    
+    {/* ✅ Text Section */}
+    <div className="max-w-xl flex flex-col gap-2">
+      <h2 className="text-[24px] font-medium font-dm-sans leading-[33.6px] text-black">
+        Get Smarter Property Insights in Your Inbox
+      </h2>
+      <p className="text-[16px] font-normal font-dm-sans leading-[22.4px] text-[#7D8C83]">
+        Subscribe for free to receive AI-powered suburb analysis, market trends, and data-driven tips
+      </p>
+    </div>
 
-          <form onSubmit={handleSubmit} className="flex gap-3">
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <Input
               type="email"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 h-12 border-gray-300 focus:border-teal-500 focus:ring-0"
+              className="w-full sm:w-[284px] px-3 py-2 bg-white rounded-[10px] border border-[#DCE0DE] text-[#7D8C83] text-sm font-normal font-dm-sans placeholder:text-[#7D8C83] focus:border-teal-500 focus:outline-none"
               required
             />
-            <Button type="submit" className="h-12 px-8 bg-teal-500 hover:bg-teal-600 text-white">
-              Subscribe
-            </Button>
+            <button
+            type="submit"
+            className="px-6 py-2 rounded-[10px] bg-gradient-to-r from-[#28C381] to-[#27A4C8] text-white text-m font-medium font-dm-sans leading-[19.6px] transition hover:opacity-90"
+            >
+            Subscribe
+            </button>
+
           </form>
         </div>
-      </div>
     </section>
   )
 }

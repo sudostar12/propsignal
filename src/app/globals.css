@@ -46,6 +46,10 @@ html {
   background: transparent !important;
 }
 
+h1, h2, h3 {
+  padding-bottom: 2px;
+}
+
 /* Not using dark-mode colour theme yet so commented out. 
 @media (prefers-color-scheme: dark) {
   html {
