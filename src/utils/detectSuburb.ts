@@ -52,7 +52,7 @@ export async function detectSuburb(input: string): Promise<DetectionResult> {
   console.log('[DEBUG detectSuburb] - AI extracted suburb:', extractedSuburb);
   
   // Check if the AI extracted suburb is valid
-if (!extractedSuburb || extractedSuburb.length < 2) {
+if (!extractedSuburb || extractedSuburb.length < 2 || extractedSuburb === "NO_SUBURB_FOUND") {
   console.log('[DEBUG detectSuburb] - AI could not extract a valid suburb. Falling back to general AI reply.');
     const questionAnalysis = await analyzeUserQuestion(input);
     const topic = questionAnalysis.topic; 
@@ -194,6 +194,7 @@ function normalizeSuburbName(name: string): string {
 // AI extraction function using OpenAI
 async function extractSuburbUsingAI(input: string): Promise<string> {
   try {
+    console.log('[DEBUG detectSuburb] triggering extractSuburbUsingAI function');
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -224,20 +225,21 @@ async function extractSuburbUsingAI(input: string): Promise<string> {
     if (extracted === 'NO_SUBURB_FOUND' || !extracted) {
       console.log('[DEBUG detectSuburb] AI could not extract a suburb from input');
       // Fallback to simple pattern matching
-      return extractSuburbFallback(input);
+      return "NO_SUBURB_FOUND";
     }
     
     return extracted;
   } catch (error) {
-    console.error('[ERROR] OpenAI API error:', error);
+    console.error('[ERROR] OpenAI API suburb extraction error:', error);
     // Fallback to simple extraction
-    return extractSuburbFallback(input);
+    return "NO_SUBURB_FOUND";
   }
 }
 
-// Fallback extraction when AI fails
+/* Fallback extraction when AI fails
 function extractSuburbFallback(input: string): string {
   // Simple pattern matching as fallback
+  console.log('[DEBUG detectSuburb] fallback to extractSuburbFallback when AI fails suburb detection.');
   const patterns = [
     /(?:in|at|for|to|from|near|around|about)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
     /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i
@@ -253,6 +255,7 @@ function extractSuburbFallback(input: string): string {
   // Last resort - return empty string
   return '';
 }
+*/
 // Debug function to check your database
 export async function debugDatabaseSuburbs(searchTerm: string = 'box hill'): Promise<void> {
   console.log('\n=== DATABASE DEBUG ===');

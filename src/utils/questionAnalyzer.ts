@@ -22,7 +22,16 @@ Example format:
   "state": "Victoria"
 }
 
-Topics can include: "price", "crime", "yield", "profile", "compare", "price_growth", "projects", "general".
+Topics can include:
+- "price": Questions about median house/unit prices
+- "crime": Questions about safety, crime rate, offences
+- "yield": Questions about rental return, rent-to-value ratios
+- "price_growth": Questions about price trends or growth over time
+- "projects": New housing developments or infrastructure
+- "compare": Comparing two or more suburbs
+- "profile": Basic overview of a specific suburb (if no other specific topic fits)
+- "lifestyle": Questions about vibe, community feel, suitability for families or professionals
+- "general": Very vague or generic questions without a strong signal
 
 Always return JSON object only — no extra text or markdown.
 `;

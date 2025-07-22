@@ -225,8 +225,17 @@ if (!lga && currentContext.lga) {
 
 // ✅ Only throw error if topic requires a suburb and area is not available
 if (!area && ['price', 'crime', 'yield', 'price_growth', 'projects'].includes(topic)) {
-  throw new Error(`route.ts error - Area is required for topic '${topic}' but not found.`);
+  console.warn(`[WARN route.ts] No suburb detected for topic '${topic}'. Asking for clarification.`);
+
+  const clarificationReply = `I couldn't tell which suburb you're referring to. Could you please clarify the suburb name so I can fetch data for ${topic}?`;
+
+  return NextResponse.json({
+    reply: clarificationReply,
+    clarificationNeeded: true,
+    options: [] // no options in this case
+  });
 }
+
 
 if (topic !== 'compare') {
  // const areaSafe = area!;
