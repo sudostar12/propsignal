@@ -4,7 +4,7 @@ import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export type AnalyzedQuestion = {
-  topic: string; // e.g., "price", "crime", "yield", "profile", "compare", "general"
+  topic: string; // e.g., "price", "crime", "yield", "profile", "compare", "general", "price_growth", "projects", "lifestyle"
   targetArea: string | null;
 };
 

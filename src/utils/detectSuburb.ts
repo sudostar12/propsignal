@@ -139,7 +139,7 @@ if (!extractedSuburb || extractedSuburb.length < 2 || extractedSuburb === "NO_SU
     
     const suburbName = exactMatch.suburb;
     const lgaName = exactMatch.lga;
-
+    
     // Query other suburbs in same LGA
     let nearbyList: string[] = [];
     const { data: nearbySuburbs, error: nearbyError } = await supabase

@@ -97,7 +97,7 @@ else {
         .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
         .join("\n• ");
 
-      const clarificationReply = `I didn't catch which suburb you meant. Could you clarify again?\n\nOptions:\n• ${optionsList}\n\nPlease reply specifying the state or LGA.`;
+      const clarificationReply = `I didn't catch which suburb you meant. Could you clarify again?\n\n**Options:**\n• ${optionsList}\n\n**Please reply specifying the state or LGA.**`;
 
       return NextResponse.json({
         reply: clarificationReply,
@@ -120,7 +120,7 @@ else {
         .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
         .join("\n• ");
 
-      const clarificationReply = `I found multiple suburbs named "${suburbDetection.extractedSuburb}". Which one do you mean?\n\n• ${optionsList}\n\nPlease reply specifying the state or LGA.`;
+      const clarificationReply = `I found multiple suburbs named "${suburbDetection.extractedSuburb}". Which one do you mean?\n\n• ${optionsList}\n\n**Please reply specifying the state or LGA.**`;
 
       return NextResponse.json({
         reply: clarificationReply,
@@ -223,26 +223,20 @@ if (!lga && currentContext.lga) {
   lga = currentContext.lga;
 }
 
-// ✅ Only throw error if topic requires a suburb and area is not available
 if (!area && ['price', 'crime', 'yield', 'price_growth', 'projects'].includes(topic)) {
-  console.warn(`[WARN route.ts] No suburb detected for topic '${topic}'. Asking for clarification.`);
-
-  const clarificationReply = `I couldn't tell which suburb you're referring to. Could you please clarify the suburb name so I can fetch data for ${topic}?`;
-
-  return NextResponse.json({
-    reply: clarificationReply,
-    clarificationNeeded: true,
-    options: [] // no options in this case
-  });
+  console.warn(`[WARN route.ts] No suburb detected for topic '${topic}'. Falling back to GPT general response`);
+   finalReply = await generateGeneralReply(messages, topic);
+  isVague = true;
 }
-
 
 if (topic !== 'compare') {
  // const areaSafe = area!;
   // You can safely use areaSafe inside this block or below only for non-compare handlers
 }
 if ((topic === "yield" || topic === "projects") && !lga) {
-  throw new Error('route.ts error - LGA is required but missing.'); //22/07 - response can be improved with AI to ask for clarification of lga or suburb. 
+    console.warn(`[WARN route.ts] No LGA detected for topic '${topic}'. Falling back to GPT general response`);
+   finalReply = await generateGeneralReply(messages, topic);
+  isVague = true;
 }
 
 if (topic === 'compare') {
@@ -328,11 +322,16 @@ if (!state && currentContext.state) {
     console.log('[DEBUG route.ts] Adding predefined suggestions for topic:', topic);
     const suggestions = getSuggestionsForTopic(topic);
 
-    return NextResponse.json({
-      reply: finalReply,
-      uuid: data?.[0]?.uuid || null,
-      suggestions // ← include in response for UI buttons
-    });
+return NextResponse.json({
+  reply: finalReply,
+  uuid: data?.[0]?.uuid || null,
+  suggestions,  // fallback suggestions will be empty if none
+  showCopy: true,
+  allowFeedback: true,
+  clarificationNeeded: Array.isArray(context.clarificationOptions) && context.clarificationOptions.length > 0,
+  options: context.clarificationOptions || []
+});
+
   } catch (err) {
     console.error('[ERROR route.ts] /api/ai-chat crashed:', err);
     return NextResponse.json(

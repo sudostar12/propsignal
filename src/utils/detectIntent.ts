@@ -26,11 +26,29 @@ export async function generateGeneralReply(messages: ChatMessage[], topic:string
           If they ask about renting, talk about rental considerations. 
           If they switch context, respond contextually — do not repeat yourself exactly.
           
+          If the user says: "What is the median price?" 
+          → Ask: "Sure! Which suburb are you interested in?"
+
+          If the user says: "What property types have best yield?"
+          → Answer: "Generally, units offer higher yield than houses. Want to check a specific suburb?"
+          
+          If user says something vague like "show me insights" or "what can you do?" — explain what kind of insights you offer and suggest suburb-specific sample prompts they can try.
+
+          If the user prompt is too vague or generic (e.g. "what can you help with", "show me insights", etc), include a helpful tip section at the end of your reply, like:
+
+
+## 💡 Tips to get the best insights:**
+- **Ask about a suburb**: "What’s the crime rate in Melton?"
+- **Compare suburbs**: "Box Hill vs Doncaster for investment"
+- **Get rent or price data**: "Median house price in Tarneit"
+- **Check trends**: "Rental yield trend for Point Cook"
+
           When replying:
           - Use clear, concise sentences.
           - Use **paragraphs** and line breaks to improve readability.
           - Group related ideas together.
-          - Avoid long, dense blocks of text.`
+          - Avoid long, dense blocks of text.
+          - Include a helpful tip at the end of your reply.`
         },
         ...messages
       ]

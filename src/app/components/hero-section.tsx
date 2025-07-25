@@ -25,11 +25,11 @@ export function HeroSection() {
 
   const sampleQueries = [
     {
-      text: "Compare Box Hill and Doncaster for investment",
+      text: "What is the price growth in Melton?",
       icon: <GraphUpIcon className="w-6 h-6 text-[#28C381]" />,
     },
     {
-      text: "What's the rental yield in Ballarat?",
+      text: "What's the rental yield in Doncaster?",
       icon: <ChatMoneyIcon className="w-6 h-6 text-[#28C381]" />,
     },
     {
