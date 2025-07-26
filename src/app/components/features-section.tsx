@@ -20,9 +20,17 @@ export function FeaturesSection() {
   ]
 
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 font-dm-sans bg-transparent">
+    <section className="py-10 px-4 sm:px-6 lg:px-8 font-dm-sans bg-transparent">
+      {/* 🔹 Divider to separate hero from features */}
+<div
+  role="separator"
+  aria-label="Section divider"
+  className="border-t border-dotted border-[#B2E5D4] mt-2 mb-6 w-1/2 md:w-[60%] mx-auto"
+/>
+
+
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-4xl font-bold text-center text-gray-900 mb-16">Why Use Our AI Property Tool?</h2>
+        <h2 className="text-4xl font-bold text-center text-gray-900 mb-12">Why Use Our AI Property Tool?</h2>
 
         <div className="grid md:grid-cols-3 gap-12">
           {features.map((feature, index) => (

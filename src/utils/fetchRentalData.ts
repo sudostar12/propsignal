@@ -166,11 +166,11 @@ export async function generateRentalYieldSummary({
   const prompt = [
     {
       role: 'system' as const,
-      content: `You are a smart Australian property investment analyst. Write a concise executive summary (max 50 words) comparing yields. Focus on:
+      content: `You are a smart Australian property investment analyst. Write a concise executive summary (max 40 words) comparing yields. Focus on:
                 1. How the suburb compares to state averages
                 2. Positioning vs nearby suburbs  
                 3. Key trend insights
-                4. Investment recommendation
+                
 
         When Replying: 
           - Use paragraphs and line breaks to improve readability.

@@ -42,10 +42,10 @@ export function HeroSection() {
     <section className="py-20 px-4 sm:px-6 lg:px-8 font-dm-sans bg-transparent">
       <div className="max-w-4xl mx-auto text-center">
 <h1 className="text-5xl md:text-6xl font-semibold text-center mb-6 bg-gradient-to-r from-[#28C381] to-[#27A4C8] bg-clip-text text-transparent leading-[1.1]">
-  Make Smarter Property Decisions with AI
+  Get Actionable Property Insights in Seconds
 </h1>
        <p className="text-xl text-gray-600 mt-2 mb-2 max-w-2xl mx-auto leading-relaxed">
-  Get rental yields, price trends, and market context for Victoria – powered by government data and AI analysis.
+  Research Victorian suburbs with data-driven insights – powered by government data and AI analysis.
 </p>
 
 <p className="text-sm text-gray-500 mb-10">
@@ -94,7 +94,7 @@ export function HeroSection() {
 </p>
 
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4">
           {sampleQueries.map((item, index) => (
             <button
               key={index}

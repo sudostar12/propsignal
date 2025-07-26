@@ -158,7 +158,7 @@ const reply = `📊 **Rental Insights for ${suburb}**
 ${summary ? `🔍 **Executive Summary**\n${summary}\n` : ''}
 ${trendSection}${nearbyMsg}
 
-💡 Data combines LGA-level rents with suburb-level prices for indicative analysis.`;
+💡 Data combines LGA and suburb level insights for indicative analysis.`;
 
 console.log('[DEBUG-RY1] Final reply generated successfully');
 return reply;
