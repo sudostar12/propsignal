@@ -214,7 +214,7 @@ const currentContext = getContext();
 
 if (context?.state && context.state.toUpperCase() !== "VIC") {
   console.log(`[INFO route.ts] Non-VIC suburb detected (${context.state}) — returning coverage notice.`);
-let suggestions: string[] = [];
+//let suggestions: string[] = [];
   finalReply = `🚧 **Coverage Notice**\n\nI currently only cover **Victorian suburbs**. Expansion to other states like **${context.state}** is underway.\n\nWant early access in your area? Let me know!`;
 
   context.clarificationOptions = [];
