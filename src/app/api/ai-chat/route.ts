@@ -187,17 +187,10 @@ setSuburbContext({
 });
 }
   }
-  /* - likely redundant block. test and remove if not required - 13/07
-if (area) {
-  updateContext({
-    suburb: area,
-    lga: lga ?? undefined,
-    state: state ?? undefined
-  });
-}
-*/
+
   console.log('[DEBUG route.ts] Current context v1:', getContext());
 }
+
 
 // Use pendingTopic for multi-suburb clarification scenario
 const context = getContext();
@@ -214,6 +207,55 @@ if (context.pendingTopic) {
 
 
 const currentContext = getContext();
+
+
+// 🚧 Check if the suburb is outside of VIC - 26/07 - to be deleted once other state coverage is added.
+
+
+if (context?.state && context.state.toUpperCase() !== "VIC") {
+  console.log(`[INFO route.ts] Non-VIC suburb detected (${context.state}) — returning coverage notice.`);
+let suggestions: string[] = [];
+  finalReply = `🚧 **Coverage Notice**\n\nI currently only cover **Victorian suburbs**. Expansion to other states like **${context.state}** is underway.\n\nWant early access in your area? Let me know!`;
+
+  context.clarificationOptions = [];
+  suggestions = [];
+
+  // ✅ Supabase logging for feedback tracking
+  const { data } = await supabase
+    .from('log_ai_chat')
+    .insert({
+      userInput,
+      AIResponse: finalReply,
+      intent: topic,
+      suburb: area,
+      isVague,
+      lga,
+      state: context.state
+    })
+    .select('uuid');
+
+  const loggedUUID = data?.[0]?.uuid || null;
+
+  // ✅ Unified response with UI icons and metadata
+  return NextResponse.json({
+    reply: finalReply,
+    uuid: loggedUUID,
+    suggestions: [], // explicitly empty
+    showCopy: true,
+    allowFeedback: true,
+    clarificationNeeded: false,
+    options: [],
+    metadata: {
+      blocked: true,
+      reason: "non_vic_suburb",
+      state: context.state,
+      suburb: context.suburb || null
+    }
+  });
+}
+
+// non-vic state coverage logic block above this line. To be deleted once additional coverage is added.
+
 
 if (topic !== 'compare' && !area && currentContext.suburb) {
   area = currentContext.suburb;

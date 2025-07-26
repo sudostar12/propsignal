@@ -5,17 +5,17 @@ export function FeaturesSection() {
     {
       icon: Database,
       title: "Real Data Sources",
-      description: "Combines public data, trends and market insights.",
+      description: "Combines government data, trends and market insights.",
     },
     {
       icon: Brain,
-      title: "AI-Generated Insights",
-      description: "Instant analysis tailored to suburb-specific growth drivers.",
+      title: "Smart Analysis",
+      description: "Contextual insights you won't find elsewhere",
     },
     {
       icon: Zap,
-      title: "Free & Instant",
-      description: "Type a suburb and get answers in seconds.",
+      title: "Instant Analysis",
+      description: "Type your question and get answers in seconds.",
     },
   ]
 
@@ -36,6 +36,18 @@ export function FeaturesSection() {
           ))}
         </div>
       </div>
+      {/* 🔥 Differentiator Section */}
+      <div className="mt-20 text-center px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Not Another Property Report
+          </h2>
+          <p className="text-gray-600 text-base leading-relaxed">
+            Most suburb tools dump raw data. <strong>Prop Signal</strong> gives you real insight — context, comparisons, and investor-friendly analysis in seconds.
+          </p>
+        </div>
+      </div>
+
     </section>
-  )
+  )  
 }

@@ -67,6 +67,7 @@ if (!extractedSuburb || extractedSuburb.length < 2 || extractedSuburb === "NO_SU
     message: fallbackReply
   };
 }
+
   // Get the first three letters of the AI generated suburb
   const firstThreeLetters = extractedSuburb.slice(0, 3).toLowerCase();
   console.log('[DEBUG detectSuburb] First 3 letters of extracted suburb:', firstThreeLetters);
@@ -122,6 +123,23 @@ if (!extractedSuburb || extractedSuburb.length < 2 || extractedSuburb === "NO_SU
     allMatches.map(s => `${s.suburb} (${s.lga}, ${s.state})`)
   );
   
+  // ✅ Early exit: Only process VIC suburbs for now - to be deleted once coverage is expanded to other states. - 26/07
+if (allMatches.length === 1 && allMatches[0].state.toUpperCase() !== "VIC") {
+  console.log(`[INFO detectSuburb] Match found in ${allMatches[0].state} — non-VIC suburbs are not yet supported.`);
+
+  return {
+    possible_suburb: allMatches[0].suburb,
+    confidence: 1,
+    lga: allMatches[0].lga,
+    state: allMatches[0].state,
+    needsClarification: false,
+    nearbySuburbs: [], // skip nearby lookup
+    message: "Suburb found outside Victoria"
+  };
+}
+
+// non-vic suburbs logic above this line. 
+
   // Step 4: Handle results based on number of matches
   if (allMatches.length === 0) {
     console.log('[DEBUG detectSuburb] - No exact matches found');

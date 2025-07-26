@@ -29,7 +29,7 @@ export function HeroSection() {
       icon: <GraphUpIcon className="w-6 h-6 text-[#28C381]" />,
     },
     {
-      text: "What's the rental yield in Doncaster?",
+      text: "What's the rental yield in Doncaster vs state average?",
       icon: <ChatMoneyIcon className="w-6 h-6 text-[#28C381]" />,
     },
     {
@@ -42,12 +42,16 @@ export function HeroSection() {
     <section className="py-20 px-4 sm:px-6 lg:px-8 font-dm-sans bg-transparent">
       <div className="max-w-4xl mx-auto text-center">
 <h1 className="text-5xl md:text-6xl font-semibold text-center mb-6 bg-gradient-to-r from-[#28C381] to-[#27A4C8] bg-clip-text text-transparent leading-[1.1]">
-  Unlock Smarter Property Insights with AI
+  Make Smarter Property Decisions with AI
 </h1>
-        <p className="text-xl text-gray-600 mt-2 mb-12 max-w-2xl mx-auto leading-relaxed">
-          Instantly discover the investment potential of any Australian suburb — powered by real data and AI-driven
-          analysis.
-        </p>
+       <p className="text-xl text-gray-600 mt-2 mb-2 max-w-2xl mx-auto leading-relaxed">
+  Get rental yields, price trends, and market context for Victoria – powered by government data and AI analysis.
+</p>
+
+<p className="text-sm text-gray-500 mb-10">
+  Built on official government datasets. No sales bias. Just insights.
+</p>
+
 
 <div className="max-w-2xl mx-auto mb-8">
   <div className="p-[2px] rounded-[16px] bg-[radial-gradient(circle,_#00FF92,_#0AC4FA)]">
@@ -55,7 +59,7 @@ export function HeroSection() {
       {/* Input Field */}
       <input
         type="text"
-        placeholder="Ask me anything about Australian residential properties..."
+        placeholder="Ask me anything about Victorian suburbs.."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => {
@@ -83,6 +87,12 @@ export function HeroSection() {
     </div>
   </div>
 </div>
+
+{/* Mini CTA below input box */}
+<p className="text-sm text-gray-500 mt-3 mb-3 tracking-wide">
+  Now supporting over <span className="font-semibold text-[#28C381]">2,000</span> Victorian suburbs. NSW & QLD coming soon.
+</p>
+
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           {sampleQueries.map((item, index) => (
