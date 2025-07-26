@@ -218,7 +218,7 @@ let suggestions: string[] = [];
   finalReply = `🚧 **Coverage Notice**\n\nI currently only cover **Victorian suburbs**. Expansion to other states like **${context.state}** is underway.\n\nWant early access in your area? Let me know!`;
 
   context.clarificationOptions = [];
-  suggestions = [];
+  //suggestions = [];
 
   // ✅ Supabase logging for feedback tracking
   const { data } = await supabase
