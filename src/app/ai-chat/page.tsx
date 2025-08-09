@@ -1,70 +1,122 @@
-'use client';
+// src/app/ai-chat/page.tsx
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { Check, Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState, Suspense } from "react";
+import { Check, Copy, ThumbsDown, ThumbsUp, ArrowLeft, ArrowUp } from "lucide-react";
+import { motion } from "framer-motion";
+import { useSearchParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
+import Link from 'next/link'
 
+//import remarkGfm from "remark-gfm";
 
-
+// ✅ Define the structure for chat messages
 type Message = {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   uuid?: string;
-  feedbackGiven?: 'positive' | 'negative';
+  feedbackGiven?: "positive" | "negative";
 };
 
-export default function AIChatPage() {
-  const [clarificationCount, setClarificationCount] = useState<number>(0);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content:
-        'Hi there! I can help you compare suburbs, check investment potential, or understand rental returns in Australia.\n\nYou can start by asking something like:\n- "Compare Box Hill and Doncaster for investment"\n- "What’s the rental yield in Ballarat?"\n- "Is Cranbourne a good family suburb?"',
-    },
-  ]);
-  const [input, setInput] = useState('');
-  const [copiedUuid, setCopiedUuid] = useState<string | null>(null); // ✅ for tracking copied message
-  const [isTyping, setIsTyping] = useState(false); //AI typing animation. 
-  const [suggestions, setSuggestions] = useState<string[]>([]); // 🆕 suggestions state
-  const bottomRef = useRef<HTMLDivElement | null>(null); // 🆕 Ref for auto-scroll
+function AIChatPageInner() {
+  const MAX_CHARS = 300;
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("query") || "";
+  const router = useRouter();
+
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string; uuid?: string; feedbackGiven?: "positive" | "negative"; }[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [copiedUuid, setCopiedUuid] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [clarificationCount, setClarificationCount] = useState(0);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  // ✅ Track if scroll is not at bottom
+const [showScrollDown, setShowScrollDown] = useState(false);
+const chatContainerRef = useRef<HTMLDivElement | null>(null);
+const [copiedUserIndex, setCopiedUserIndex] = useState<number | null>(null) // this is for the user copy button
+const hasSentInitialQuery = useRef(false);
+
+
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 🆕 Feedback handler function
-  const sendFeedback = async (uuid: string | undefined, feedback: 'positive' | 'negative') => {
-    if (!uuid) return alert('No message to give feedback on.');
-  
-    try {
-      await fetch('/api/feedback', {
-        method: 'POST',
-        body: JSON.stringify({ uuid, feedback }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+useEffect(() => {
+  if (initialQuery && messages.length === 0 && !hasSentInitialQuery.current) {
+    hasSentInitialQuery.current = true;
+    sendMessage(initialQuery);
+    router.replace("/ai-chat");
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
-       // Update message feedback
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.uuid === uuid ? { ...msg, feedbackGiven: feedback as 'positive' | 'negative' } : msg
-      )
-    );
-    } catch (error) {
-      console.error('Feedback failed:', error);
-    }
+
+  //to enable toggle arrow for scroll view.
+useEffect(() => {
+  // Use window scroll detection - works on all devices and screen sizes
+  const handleScroll = () => {
+    console.log("🌐 WINDOW SCROLL EVENT FIRED!");
+    
+    // Get page scroll values (not container scroll values)
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+    const clientHeight = window.innerHeight;
+    const scrollDiff = scrollHeight - scrollTop - clientHeight;
+    
+    // Account for input box height - adjust for mobile if needed
+    const inputBoxHeight = 160;
+    const buffer = 50;
+    const adjustedThreshold = inputBoxHeight + buffer;
+    
+    const isNearBottom = scrollDiff <= adjustedThreshold;
+    
+    // Debug logging to see if values change when scrolling
+    console.log("🌐 Window Scroll Values:", {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+      scrollDiff,
+      threshold: adjustedThreshold,
+      isNearBottom,
+      showScrollDown: !isNearBottom
+    });
+    
+    setShowScrollDown(!isNearBottom);
   };
-    // ✅ Copy to clipboard handler
+
+  // Listen to WINDOW scroll events (not container scroll)
+  window.addEventListener("scroll", handleScroll);
+  handleScroll(); // Check initial state
+
+  // Cleanup function
+  return () => {
+    console.log("🧹 Removing window scroll listener");
+    window.removeEventListener("scroll", handleScroll);
+  };
+}, [messages]); // Re-check when messages change
+
+
+
+  const sendFeedback = async (uuid: string | undefined, feedback: "positive" | "negative") => {
+    if (!uuid) return;
+    await fetch("/api/feedback", {
+      method: "POST",
+      body: JSON.stringify({ uuid, feedback }),
+      headers: { "Content-Type": "application/json" },
+    });
+    setMessages((prev) => prev.map((msg) => (msg.uuid === uuid ? { ...msg, feedbackGiven: feedback } : msg)));
+  };
+
   const handleCopy = (uuid: string, content: string) => {
     navigator.clipboard.writeText(content);
     setCopiedUuid(uuid);
     setTimeout(() => setCopiedUuid(null), 2000);
   };
 
- // 🆕 Send suggestion as new message
   const handleSuggestionClick = async (suggestion: string) => {
-    console.log('[DEBUG-SUGGESTION] User clicked suggestion:', suggestion);
     setInput(suggestion);
     await sendMessage(suggestion);
   };
@@ -73,156 +125,215 @@ export default function AIChatPage() {
     const messageToSend = msg || input;
     if (!messageToSend.trim()) return;
 
-    const updatedMessages: Message[] = [...messages, { role: 'user', content: messageToSend }];
+    const updatedMessages: Message [] = [...messages, { role: "user", content: messageToSend }];
     setMessages(updatedMessages);
+    setInput("");
+    setIsTyping(true);
 
-    
-    setIsTyping(true); // before fetch
-    // Call backend api
-    const res = await fetch('/api/ai-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/ai-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: updatedMessages, clarification_count: clarificationCount }),
     });
 
     const data = await res.json();
-    setIsTyping(false); // after fetch
+    setIsTyping(false);
+    if (data.clarification_count) setClarificationCount(data.clarification_count);
 
-    if (data.clarification_count) {
-      setClarificationCount(data.clarification_count);
-    }
-    // Add assistant message with uuid, ensure correct type
+    const assistantReply = data.reply || data.message || "Sorry, I couldn't process your request.";
+    // ✅ Post-process assistantReply to insert line breaks between metrics
+    const formattedReply = assistantReply
+    .replace(/•\s*/g, "\n- ") // Convert dots to markdown-style list
+    .replace(/(?<!\n)-/g, "\n-"); // Ensure each list starts on a new line
 
-const assistantReply = data.reply || data.message || "Sorry, I couldn't process your request. Please try again.";
-
-
-setMessages([
-  ...updatedMessages,
-  {
-    role: 'assistant',
-    content: assistantReply,
-    uuid: data.uuid,
-  },
-]);
-
-    // 🆕 Update suggestions from backend
+    setMessages([...updatedMessages, { role: "assistant", content: formattedReply, uuid: data.uuid }]);
     setSuggestions(data.suggestions || []);
-
-    setInput('');
   }
 
+  //chat page view code
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6">
-      <div className="bg-white shadow-md rounded-2xl p-6 border border-gray-200">
-        <h1 className="text-2xl font-semibold mb-2">💬 PropSignal AI Chat</h1>
-        <p className="text-sm text-gray-500 mb-4">
-          Ask anything about Australian residential properties: rental yield, property comparisons, family
-          suitability, infrastructure and more.
-        </p>
-{/* 🚀 Differentiator Highlight */}
-<div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-300 text-blue-900 text-sm rounded-xl p-4 shadow-sm mb-4">
+    <div className="w-full min-h-screen flex justify-center relative">
 
-<motion.div
-  initial={{ opacity: 0, y: -10 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ duration: 0.5 }}
-  
->
-<p className="font-medium flex items-center gap-2">
-  <span>🚀 Why PropSignal AI?</span>
-  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">Smart Engine</span>
-</p>
+  {/* ✅ New flex-1 wrapper to enable scroll behavior */}
+  <div className="flex flex-col w-full max-w-[700px] min-h-screen px-0 pt-16">
 
-  <ul className="list-disc list-inside text-sm mt-1 space-y-1">
-    <li>📍 Analyses real sales, rental, and planning data — suburb by suburb</li>
-    <li>📈 Scores suburbs using a unique growth & yield model tailored for buyers and investors</li>
-    <li>🔎 Detects untapped trends and emerging segments that traditional analysis ignores.</li>
-  </ul>
 
-</motion.div>
+   {/* ✅ Sticky Header */}
+<div className="fixed top-0 left-0 w-full z-30 bg-white/80 backdrop-blur-md border-gray-200 px-4 py-3">
+  <div className="max-w-[700px] mx-auto flex items-center">
+  <Link href="/" className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-[#F4F5F5] rounded-[10px] shadow-[0px_1px_3px_rgba(2,130,78,0.06)] text-[#3D4540] text-sm font-medium font-dm-sans hover:bg-gray-50 transition">
+  {/* Left Arrow Icon */}
+  <ArrowLeft size={16} strokeWidth={2} className="text-[#7D8C83]" />
+  Back
+</Link>
+
+  </div>
 </div>
 
-        <div className="h-[400px] overflow-y-auto bg-gray-50 rounded-md p-4 text-sm mb-4 space-y-3 border">
+
+<div ref={chatContainerRef}
+     id="chat-container"
+     className="flex-1 px-4 pb-[160px] break-words"
+>
+
         {messages.map((m, i) => (
-  <div key={i} className="space-y-1">
-    {m.role === 'assistant' ? (
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: 'easeOut', delay: 0.2 * i }}
-        className="flex justify-start"
-      >
-        <div className="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-sm max-w-xs md:max-w-md whitespace-pre-wrap">
-          {m.content}
-        </div>
-      </motion.div>
+          <div key={i} className="mb-4">
+            {m.role === "user" ? (
+<div className="flex flex-col items-end mb-4">
+  {/* ✅ User message bubble */}
+  <div className="relative max-w-full sm:max-w-[600px] bg-[#F0F5F3] text-[#0B3725] px-2 py-3 rounded-[10px] shadow-sm">
+    <p className="text-sm font-medium leading-relaxed break-words text-right">
+      {m.content}
+    </p>
+  </div>
+
+  {/* ✅ Copy button placed below, not inside bubble */}
+  <button
+    onClick={() => {
+      navigator.clipboard.writeText(m.content)
+      setCopiedUserIndex(i)
+      setTimeout(() => setCopiedUserIndex(null), 2000)
+    }}
+    className="mt-1 flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition"
+    title="Copy this message"
+  >
+    {copiedUserIndex === i ? (
+      <>
+        <Check size={16} />
+        <span>Copied</span>
+      </>
     ) : (
-      <div className="flex justify-end">
-        <div className="bg-blue-100 text-blue-900 px-4 py-2 rounded-2xl shadow-sm max-w-xs md:max-w-md whitespace-pre-wrap">
-          {m.content}
-        </div>
-      </div>
+      <>
+        <Copy size={16} />
+        <span>Copy</span>
+      </>
     )}
+  </button>
+</div>
 
-    {/* Feedback + Copy Buttons only on latest assistant message */}
-    {m.role === 'assistant' && m.uuid && i === messages.length - 1 && (
-      <div className="flex items-center gap-4 text-sm text-gray-500 pl-1 mt-1">
+
+
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="flex items-start gap-3 pt-4 border-t border-gray-100 px-4 sm:px-0"
+              >
+                {/* ✅ AI response with logo */}
+                <div className="p-[1px] rounded-[7px] border border-white bg-[linear-gradient(149deg,rgba(255,255,255,0.5)_0%,rgba(39,166,193,0.05)_41%,rgba(39,166,193,0.14)_100%)] shadow-[24px_24px_40px_rgba(24,61,130,0.1)] backdrop-blur-[4.8px]">
+                  <div className="w-7 h-7 bg-gradient-to-b from-[#28C381] to-[#27A4C8] rounded-[8px] flex items-center justify-center">
+                    <Image
+                      src="/PropSignal-logo.svg"
+                      alt="PropSignal Logo"
+                      width={25}
+                      height={25}
+                    />
+                  </div>
+                </div>
+                {/* ✅ AI response layout */}
+                <div className="prose prose-sm max-w-none text-[#3D4540] font-dm-sans break-words">
+<ReactMarkdown
+  components={{
+    h1: ({ children }) => (
+      <h1 className="text-base font-semibold text-[#282D2A] mb-4">{children}</h1>
+    ),
+    h2: ({ children }) => (
+      <h2 className="text-base font-semibold text-[#282D2A] mb-3">{children}</h2>
+    ),
+    p: ({ children }) => (
+      <p className="text-m text-[#3D4540] leading-relaxed mt-2 first:mt-0 last:mt-3">
+        {children}
+      </p>
+    ),
+    ul: ({ children }) => (
+      <ul className="list-none pl-0 space-y-2 mb-3">{children}</ul> // extra space after list
+    ),
+li: ({ children }) => (
+  <li className="relative pl-5 text-m text-[#3D4540] leading-relaxed mb-1">
+    <span className="absolute left-0 top-2 w-1.5 h-1.5 bg-[#28C381] rounded-full" />
+    {children}
+  </li>
+),
+
+    strong: ({ children }) => (
+      <strong className="font-semibold text-[#282D2A]">{children}</strong>
+    ),
+    // Optional: handle <br/> breaks nicely
+    br: () => <span className="block h-3" />,
+  }}
+>
+  {m.content}
+</ReactMarkdown>
+
+
+</div>
+
+              </motion.div>
+            )}
+
+            {/* ✅ Feedback & Copy Section */}
+{m.role === "assistant" && m.uuid && i === messages.length - 1 && (
+  <div className="flex items-center gap-3 text-xs text-gray-500 pl-[40px] pt-1">
+    {/* ✅ Copy Button */}
+    <button
+      onClick={() => handleCopy(m.uuid!, m.content)}
+      className="flex items-center gap-1 hover:text-blue-600 transition"
+      title="Copy this response"
+    >
+      {copiedUuid === m.uuid ? (
+        <>
+          <Check size={16} />
+          <span>Copied</span>
+        </>
+      ) : (
+        <>
+          <Copy size={16} />
+          <span>Copy</span>
+        </>
+      )}
+    </button>
+
+    <div className="h-4 w-px bg-gray-300" />
+
+    {/* ✅ Feedback */}
+    {m.feedbackGiven ? (
+      <span className="text-green-600 font-medium">Thanks for the feedback</span>
+    ) : (
+      <div className="flex items-center gap-2">
         <button
-          onClick={() => handleCopy(m.uuid!, m.content)}
-          className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 transition"
+          onClick={() => sendFeedback(m.uuid!, "positive")}
+          className="p-1 rounded-full hover:bg-gray-100 transition"
+          title="Helpful"
         >
-          {copiedUuid === m.uuid ? (
-            <>
-              <Check size={16} />
-              <span>Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy size={16} />
-              <span>Copy</span>
-            </>
-          )}
+          <ThumbsUp size={18} className="text-gray-600 hover:text-green-600" />
         </button>
-
-        <div className="h-4 w-px bg-gray-300" />
-
-        {m.feedbackGiven ? (
-          <span className="text-green-600">✅ Feedback recorded</span>
-        ) : (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => sendFeedback(m.uuid!, 'positive')}
-              className="p-1 rounded-full hover:bg-gray-100 transition"
-              title="Helpful"
-            >
-              <ThumbsUp size={18} className="text-gray-600 hover:text-green-600" />
-            </button>
-            <button
-              onClick={() => sendFeedback(m.uuid!, 'negative')}
-              className="p-1 rounded-full hover:bg-gray-100 transition"
-              title="Not helpful"
-            >
-              <ThumbsDown size={18} className="text-gray-600 hover:text-red-500" />
-            </button>
-          </div>
-        )}
+        <button
+          onClick={() => sendFeedback(m.uuid!, "negative")}
+          className="p-1 rounded-full hover:bg-gray-100 transition"
+          title="Not helpful"
+        >
+          <ThumbsDown size={18} className="text-gray-600 hover:text-red-500" />
+        </button>
       </div>
     )}
   </div>
-))}
+)}
 
-            {/* 🆕 Scroll anchor to keep view on latest */}
-  <div ref={bottomRef} />
-        </div>    
 
-        {/* 🆕 Suggestions Buttons Block */}
+          </div>
+        ))}
+
+        <div ref={bottomRef} />
+
         {suggestions.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {suggestions.map((sug, idx) => (
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((sug, i) => (
               <button
-                key={idx}
+                key={i}
                 onClick={() => handleSuggestionClick(sug)}
-                className="px-3 py-1 text-xs bg-gray-100 border border-gray-300 rounded-full hover:bg-blue-100 transition"
+                className="px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm text-sm font-medium text-[#0B3725] hover:bg-white border border-[#DCE0DE] transition"
+
               >
                 {sug}
               </button>
@@ -230,33 +341,91 @@ setMessages([
           </div>
         )}
 
+{isTyping && (
+  <div className="text-sm flex items-center gap-2 pl-2 mb-3 animate-pulse">
+    <span className="w-2 h-2 bg-gradient-to-r from-[#07985A] to-[#0F708C] rounded-full animate-bounce"></span>
+    <span className="bg-gradient-to-r from-[#07985A] to-[#0F708C] bg-clip-text text-transparent font-medium">
+      Analyzing...
+    </span>
+  </div>
+)}
 
-{/* Message Input */}
-      {/* 👈 closing tag for messages container */}
-
-      {isTyping && (
-        <div className="text-sm text-gray-500 flex items-center gap-2 pl-2 mb-3 animate-pulse">
-          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-          Analysing...
-        </div>
-      )}
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          placeholder="e.g. Compare Box Hill and Doncaster for investment"
-          className="flex-1 px-4 py-2 rounded-full border border-gray-300 bg-white/80 backdrop-blur-sm shadow-sm placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-        />
-        <button
-          onClick={() => sendMessage()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-        >
-          Send
-        </button>
       </div>
+
+{/* ✅ Scroll to bottom button */}
+{showScrollDown && (
+  <button
+    onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
+    className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-50 p-3 rounded-full bg-white border-2 border-gray-300 shadow-lg hover:bg-gray-100 transition-all duration-200 
+               md:bottom-32 sm:bottom-28" // Responsive positioning
+    title="Scroll to latest"
+  >
+    {/* Down arrow icon */}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-5 h-5 text-gray-600"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+)}
+
+</div>
+
+     
+{/* ✅ Redesigned fixed input box with subtext */}
+<div className="w-full fixed bottom-0 px-3 pt-2 pb-[env(safe-area-inset-bottom,1rem)] z-10">
+
+  <div className="max-w-[700px] mx-auto w-full space-y-2">
+
+    {/* Input field */}
+    <div className="w-full flex items-center rounded-[10px] bg-white border border-gray-300 px-4 py-6 shadow-sm sm:px-4 sm:py-6">
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => {
+          const value = e.target.value;
+          if (value.length <= MAX_CHARS) setInput(value);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+        placeholder="Ask anything about Victorian suburbs..."
+        className="flex-1 text-sm font-medium text-[#3D4540] placeholder:text-gray-400 outline-none bg-white" //bg-white prevents ios/Andriod dark mode from turning it black.
+      />
+      <span className="text-xs text-gray-400">
+        {input.trim().length} / {MAX_CHARS}
+      </span>
+    <button
+  disabled={input.trim().length < 3}
+  onClick={() => sendMessage()}
+  className={`ml-3 w-7 h-7 p-2 rounded-full flex items-center justify-center transition ${
+    input.trim().length < 3
+      ? 'bg-gray-300 cursor-not-allowed opacity-60'
+      : 'bg-gradient-to-b from-[#28C381] to-[#27A4C8] hover:opacity-90'
+  }`}
+>
+  <ArrowUp size={14} className="text-white" />
+</button>
+
     </div>
-  </main>
-);
+
+    {/* Subtext disclaimer */}
+    <p className="text-center text-xs text-gray-400">
+      For research purposes only. Always verify important property decisions.
+    </p>
+  </div>
+</div>
+
+
+    </div>
+  );
+}
+export default function AIChatPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-500">Loading chat...</div>}>
+      <AIChatPageInner />
+    </Suspense>
+  );
 }

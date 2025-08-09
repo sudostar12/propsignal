@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-//import OpenAI from 'openai';
 import { analyzeUserQuestion } from '@/utils/questionAnalyzer';
 import { updateContext, getContext } from '@/utils/contextManager';
 import { answerCrimeStats } from "@/utils/answers/crimeAnswer";
@@ -11,9 +10,9 @@ import { supabase } from '@/lib/supabaseClient';
 import { answerPriceGrowth } from "@/utils/answers/priceGrowthAnswer";
 import { answerNewProjects } from "@/utils/answers/newProjectsAnswer";
 import { getSuggestionsForTopic } from '@/utils/suggestions';
+import { answerMultiSuburbComparison } from "@/utils/answers/multiSuburbAnswer";
+import { setSuburbContext } from "@/utils/contextManager";
 
-
-//const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,38 +26,35 @@ export async function POST(req: NextRequest) {
     const questionAnalysis = await analyzeUserQuestion(userInput);
     console.log('[DEBUG route.ts] Question analysis:', questionAnalysis);
 
-    let area = questionAnalysis.targetArea;
-    let topic = questionAnalysis.topic;
+    //let area = questionAnalysis.targetArea;
     let finalReply = '';
     let isVague = false;
     let lga = null;
     let state = null;
+    let topic = questionAnalysis.topic;
+    //const targetAreas = questionAnalysis.targetAreas || [];
+let area: string | undefined = undefined;
+const suburb1 = questionAnalysis.targetAreas?.[0] || '';
+const suburb2 = questionAnalysis.targetAreas?.[1] || '';
+
+
+
+if (topic === 'compare' && questionAnalysis.targetAreas.length > 1) {
+  console.log('[DEBUG route.ts] Multi-suburb comparison requested:', questionAnalysis.targetAreas);
+  // In compare flow, do not set area here
+}
+
 
     // ============================
     // [DEBUG-S5.1] MULTI-SUBURB COMPARISON HANDLING
     // ============================
+    // 11/07: suburb comparison can be moved to a seperate file under answers. 
 
 if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis.targetAreas.length > 1) {
   console.log('[DEBUG-route.ts] Multi-suburb comparison requested:', questionAnalysis.targetAreas);
-
-  const results: string[] = [];
-
-  for (const suburb of questionAnalysis.targetAreas) {
-    let result = "";
-
-    if (questionAnalysis.topic === "crime") {
-      result = await answerCrimeStats(suburb);
-    } else if (questionAnalysis.topic === "price") {
-      result = await answerMedianPrice(suburb);
-    } else {
-      result = `I don't yet support "${questionAnalysis.topic}" data.`;
-    }
-
-    results.push(`**${suburb}:** ${result}`);
-  }
-
-        finalReply = `Here's a side-by-side comparison:\n\n${results.join("\n\n")}`;
-    }
+  
+  finalReply = await answerMultiSuburbComparison(questionAnalysis.targetAreas, questionAnalysis.topic);
+}
   
 // ============================
 // [DEBUG-S5.2] MULTI-SUBURB QUERY HANDLING
@@ -71,7 +67,7 @@ else {
   if (context.clarificationOptions && context.clarificationOptions.length > 0) {
     console.log('[DEBUG route.ts] User provided clarification input:', userInput);
 
-     // ✅ Use topic from original context instead of re-analyzing user clarification input for multi-suburb flow.
+     // ✅ For multi-suburb flow, use topic from original context instead of re-analyzing 
   topic = context.pendingTopic || 'general';
   console.log('[DEBUG route.ts] Using pending topic from context:', topic);
 
@@ -101,7 +97,7 @@ else {
         .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
         .join("\n• ");
 
-      const clarificationReply = `I didn't catch which suburb you meant. Could you clarify again?\n\nOptions:\n• ${optionsList}\n\nPlease reply specifying suburb, state, or LGA.`;
+      const clarificationReply = `I didn't catch which suburb you meant. Could you clarify again?\n\n**Options:**\n• ${optionsList}\n\n**Please reply specifying the state or LGA.**`;
 
       return NextResponse.json({
         reply: clarificationReply,
@@ -124,7 +120,7 @@ else {
         .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
         .join("\n• ");
 
-      const clarificationReply = `I found multiple suburbs named "${suburbDetection.extractedSuburb}". Which one do you mean?\n\n• ${optionsList}\n\nPlease reply specifying the state or LGA.`;
+      const clarificationReply = `I found multiple suburbs named "${suburbDetection.extractedSuburb}". Which one do you mean?\n\n• ${optionsList}\n\n**Please reply specifying the state or LGA.**`;
 
       return NextResponse.json({
         reply: clarificationReply,
@@ -132,27 +128,69 @@ else {
         options: suburbDetection.multipleMatches
       });
     }
+      // ✅ AI fallback to handle no suburb found
+      if (!suburbDetection.possible_suburb && !suburbDetection.needsClarification) {
+      console.log('[DEBUG route.ts] No suburb detected, using AI fallback clarification');
 
-    if (suburbDetection.possible_suburb) {
-      area = suburbDetection.possible_suburb;
-      lga = suburbDetection.lga;
-      state = suburbDetection.state;
-      console.log('[DEBUG route.ts] Suburb auto-detected:', area, ',', lga, ',', state);
+      const aiFallbackMessage = await generateGeneralReply(messages, topic);
 
-      // Update context
-      updateContext({ suburb: area, lga, state, clarificationOptions: [] });
+        // 🔧 Add predefined suggestions here too
+  let suggestions: string[] = [];
+  if (topic && typeof topic === 'string') {
+    const topicSuggestions = getSuggestionsForTopic(topic);
+    if (Array.isArray(topicSuggestions) && topicSuggestions.length > 0) {
+      console.log('[DEBUG-SUGGEST] Selected suggestions (fallback path):', topicSuggestions);
+      suggestions = topicSuggestions;
     }
   }
-if (area) {
-  updateContext({
-    suburb: area,
-    lga: lga ?? undefined,
-    state: state ?? undefined
-  });
+
+     // ✅ Log fallback message to DB
+console.log('[DEBUG route.ts] Logging fallback AI response');
+const { data: fallbackLog, error: fallbackLogError } = await supabase
+  .from('log_ai_chat')
+  .insert({
+    userInput,
+    AIResponse: aiFallbackMessage,
+    intent: topic,
+    suburb: null,
+    isVague: true,
+    lga: null,
+    state: null
+  })
+  .select('uuid');
+
+if (fallbackLogError) {
+  console.error('[ERROR route.ts] Fallback logging failed:', fallbackLogError);
+} else {
+  console.log('[DEBUG route.ts] Fallback logged successfully, UUID:', fallbackLog?.[0]?.uuid);
 }
+
+// ✅ Return fallback + uuid + suggestions
+return NextResponse.json({
+  reply: aiFallbackMessage,
+  clarificationNeeded: true,
+  options: [],
+  uuid: fallbackLog?.[0]?.uuid || null,
+  suggestions
+});
+
+    }
+
+    if (suburbDetection.possible_suburb) {
+ 
+setSuburbContext({
+  suburb: suburbDetection.possible_suburb,
+  lga: suburbDetection.lga,
+  state: suburbDetection.state,
+  nearbySuburbs: suburbDetection.nearbySuburbs ?? [],
+  clarificationOptions: [],
+});
+}
+  }
 
   console.log('[DEBUG route.ts] Current context v1:', getContext());
 }
+
 
 // Use pendingTopic for multi-suburb clarification scenario
 const context = getContext();
@@ -167,65 +205,129 @@ if (context.pendingTopic) {
   });
 }
 
-/* - The suburb, lga and state lookup is done in detectSuburb.ts - this code is redundant - DELETE after testing.  
-if (area && (!lga || !state)) {
-  console.log('[DEBUG route.ts] Looking up LGA and State for suburb:', area);
-  const { data: suburbInfo, error: suburbError } = await supabase
-    .from('lga_suburbs')
-    .select('lga, state')
-    .eq('suburb', area)
-    .single();
 
-  if (suburbError) {
-    console.error('[ERROR: route.ts] Failed to lookup suburb details:', suburbError);
-  } else if (suburbInfo) {
-    lga = suburbInfo.lga;
-    state = suburbInfo.state;
-    console.log('[DEBUG route.ts] Found LGA:', lga, 'State:', state);
-  }
+const currentContext = getContext();
 
-  updateContext({ suburb: area, lga: lga ?? undefined, state: state ?? undefined });
 
-  console.log('[DEBUG route.ts] Current context v2:', getContext());
+// 🚧 Check if the suburb is outside of VIC - 26/07 - to be deleted once other state coverage is added.
 
+
+if (context?.state && context.state.toUpperCase() !== "VIC") {
+  console.log(`[INFO route.ts] Non-VIC suburb detected (${context.state}) — returning coverage notice.`);
+//let suggestions: string[] = [];
+  finalReply = `🚧 **Coverage Notice**\n\nI currently only cover **Victorian suburbs**. Expansion to other states like **${context.state}** is underway.\n\nWant early access in your area? Let me know!`;
+
+  context.clarificationOptions = [];
+  //suggestions = [];
+
+  // ✅ Supabase logging for feedback tracking
+  const { data } = await supabase
+    .from('log_ai_chat')
+    .insert({
+      userInput,
+      AIResponse: finalReply,
+      intent: topic,
+      suburb: area,
+      isVague,
+      lga,
+      state: context.state
+    })
+    .select('uuid');
+
+  const loggedUUID = data?.[0]?.uuid || null;
+
+  // ✅ Unified response with UI icons and metadata
+  return NextResponse.json({
+    reply: finalReply,
+    uuid: loggedUUID,
+    suggestions: [], // explicitly empty
+    showCopy: true,
+    allowFeedback: true,
+    clarificationNeeded: false,
+    options: [],
+    metadata: {
+      blocked: true,
+      reason: "non_vic_suburb",
+      state: context.state,
+      suburb: context.suburb || null
+    }
+  });
 }
-*/
 
-if (area) {
-  console.log('[DEBUG route.ts] Current topic:', topic);
-  if (topic === 'price') {
-    finalReply = await answerMedianPrice(area);
-  } else if (topic === 'crime') {
-    finalReply = await answerCrimeStats(area);
-  } else if (topic === 'yield') {
-    if (!lga) { //this is to ensure lga is passed correctly from detectSuburb.ts for yield topic as the dataset is lga level.
-    throw new Error('route.ts error - LGA is required for rental yield calculation but is missing');
-  }
-    finalReply = await answerRentalYield(area, lga);
-  } else if (topic === 'price_growth') {
-    finalReply = await answerPriceGrowth(area, questionAnalysis.years || 3);
-  } else if (topic === 'projects') {
-    if (!lga) { //this is to ensure lga is passed correctly from detectSuburb.ts for projects topic as the dataset is lga level.
-    throw new Error('route.ts error - LGA is required for project insights but is missing');
-  }
-    finalReply = await answerNewProjects(area, lga);
-  } else if (topic === 'profile') {
-    finalReply = `Great! You requested a detailed profile for ${area}. Right now, we haven't implemented full profile yet...`;
-  } else if (topic === 'compare') {
-    finalReply = `Comparison queries are coming soon!`;
-  } else {
-    // ⚠️ fallback still inside — needs to be outside if area exists but topic is general
-    console.log('[DEBUG route.ts] generateGeneralReply:', topic);
-    finalReply = await generateGeneralReply(messages, topic);
-    isVague = true;
-  }
-} else {
-  // 💥 If no area, handle general fallback
-  finalReply = await generateGeneralReply(messages, topic);
+// non-vic state coverage logic block above this line. To be deleted once additional coverage is added.
+
+
+if (topic !== 'compare' && !area && currentContext.suburb) {
+  area = currentContext.suburb;
+}
+
+if (!lga && currentContext.lga) {
+  lga = currentContext.lga;
+}
+
+if (!area && ['price', 'crime', 'yield', 'price_growth', 'projects'].includes(topic)) {
+  console.warn(`[WARN route.ts] No suburb detected for topic '${topic}'. Falling back to GPT general response`);
+   finalReply = await generateGeneralReply(messages, topic);
   isVague = true;
 }
 
-const currentContext = getContext();
+if (topic !== 'compare') {
+ // const areaSafe = area!;
+  // You can safely use areaSafe inside this block or below only for non-compare handlers
+}
+if ((topic === "yield" || topic === "projects") && !lga) {
+    console.warn(`[WARN route.ts] No LGA detected for topic '${topic}'. Falling back to GPT general response`);
+   finalReply = await generateGeneralReply(messages, topic);
+  isVague = true;
+}
+
+if (topic === 'compare') {
+  console.log('[DEBUG route.ts] Topic value:', topic, ', Target areas:', questionAnalysis.targetAreas);
+} else {
+  console.log('[DEBUG route.ts] Topic value:', topic, ', Area value:', area);
+}
+
+
+const areaSafe = area!;
+const topicHandlers: Record<string, () => Promise<string>> = {
+  price: () => answerMedianPrice(areaSafe),
+  crime: () => answerCrimeStats(areaSafe),
+  yield: () => {return answerRentalYield(areaSafe, lga!);},
+  price_growth: () => answerPriceGrowth(areaSafe, questionAnalysis.years || 3),
+  projects: () => {return answerNewProjects(areaSafe, lga!);}
+  };
+
+
+if (area && topicHandlers[topic]) {
+  finalReply = await topicHandlers[topic]();
+} else if (topic === 'profile') {
+  finalReply = `Great question! Our full suburb profile feature is currently being developed — it will include details like lifestyle insights, local amenities, and growth trends to help you make informed decisions.
+
+In the meantime, here are a few things you can ask about ${area}:
+• "What is the median price in ${area}?"
+• "Tell me the rental yield for ${area}."
+• "Show me price growth trends in ${area}."
+• "Are there any new projects in ${area}?"
+• "What are the crime stats for ${area}?"
+
+Just type one of these, or ask about anything else you'd like to explore!`;
+} else if (topic === 'compare') {
+  finalReply = `Thanks for your question! Our suburb comparison feature is currently being developed — it will let you easily compare ${questionAnalysis.targetAreas.join (" and ")} on price trends, rental yields, and more.
+
+While we're building this, you can still explore detailed insights on individual suburbs, one at a time. Here are some example prompts you can try:
+• "What is the median price in ${suburb1}?"
+• "Tell me the rental yield for ${suburb2}."
+• "Show me price growth trends in ${suburb2}."
+• "Are there any new projects in ${suburb2}?"
+• "What are the crime stats for ${suburb1}?"
+
+Feel free to ask about any of these, or anything else you'd like to explore!`;
+
+} else {
+  console.log('[DEBUG route.ts] Preparing AI general response.');
+  finalReply = await generateGeneralReply(messages, topic);
+  isVague = true;
+}
 
 if (!lga && currentContext.lga) {
   lga = currentContext.lga;
@@ -262,11 +364,16 @@ if (!state && currentContext.state) {
     console.log('[DEBUG route.ts] Adding predefined suggestions for topic:', topic);
     const suggestions = getSuggestionsForTopic(topic);
 
-    return NextResponse.json({
-      reply: finalReply,
-      uuid: data?.[0]?.uuid || null,
-      suggestions // ← include in response for UI buttons
-    });
+return NextResponse.json({
+  reply: finalReply,
+  uuid: data?.[0]?.uuid || null,
+  suggestions,  // fallback suggestions will be empty if none
+  showCopy: true,
+  allowFeedback: true,
+  clarificationNeeded: Array.isArray(context.clarificationOptions) && context.clarificationOptions.length > 0,
+  options: context.clarificationOptions || []
+});
+
   } catch (err) {
     console.error('[ERROR route.ts] /api/ai-chat crashed:', err);
     return NextResponse.json(

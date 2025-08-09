@@ -1,4 +1,6 @@
 import { fetchMedianPrice, fetchRentals } from '@/utils/fetchSuburbData';
+import { getContext } from "@/utils/contextManager";
+import { getStateAverageYields, generateRentalYieldSummary } from '@/utils/fetchRentalData';
 
 export async function answerRentalYield(suburb: string, lga: string) {
   console.log('[DEBUG-RY1] Starting rental yield calculation for suburb:', suburb, 'LGA:', lga);
@@ -43,14 +45,122 @@ export async function answerRentalYield(suburb: string, lga: string) {
   const annualRent = weeklyRent * 52;
   const estimatedYield = medianPrice > 0 ? ((annualRent / medianPrice) * 100).toFixed(1) : 'N/A';
 
-  // Step 4: Build reply
-  const reply = `📊 Rental Insights for ${suburb}
 
-• Median Weekly Rent (LGA level): $${weeklyRent}
-• Median House Price (Suburb level): $${medianPrice.toLocaleString()}
-• Estimated Gross Yield: ${estimatedYield}% (indicative only, based on LGA rent)
+// Step 4: Compute 3-year yield trend for both property types
+const currentYear = latestRentalYear;
+const trendStartYear = currentYear - 4;
 
-💬 More suburb-specific rental data coming soon!`;
+const yieldTrends: { [key: string]: string[] } = {
+  house: [],
+  unit: [],
+};
 
-  return reply;
+['house', 'unit'].forEach((propertyType) => {
+  for (let year = trendStartYear; year <= currentYear; year++) {
+    const rentRec = rentalData.find(r => r.year === year && r.propertyType.toLowerCase() === propertyType);
+    const priceRec = suburbPriceRecords.find(p => p.year === year && p.propertyType.toLowerCase() === propertyType);
+
+    if (rentRec?.medianRent && priceRec?.medianPrice) {
+      const yieldPct = ((rentRec.medianRent * 52) / priceRec.medianPrice) * 100;
+      yieldTrends[propertyType].push(`${year}: ${yieldPct.toFixed(1)}%`);
+    }
+  }
+});
+
+const houseTrend = yieldTrends.house.length ? `• 🏠 **House**: ${yieldTrends.house.join(', ')}` : '';
+const unitTrend = yieldTrends.unit.length ? `• 🏢 **Unit**: ${yieldTrends.unit.join(', ')}` : '';
+
+const trendSection = houseTrend || unitTrend
+  ? `\n📈 **3-Year Yield Trend**\n${[houseTrend, unitTrend].filter(Boolean).join('\n')}`
+  : '';
+
+
+  
+// Step 7: Compare yield with up to 2 nearby suburbs (same LGA rent, different suburb price)
+  const context = getContext();
+  const state = context?.state || 'VIC'; // Default to VIC if no state found
+  console.log('[DEBUG-RY1] Using state:', state);
+const nearbySuburbs = context?.nearbySuburbs || [];
+const maxNearby = 2;
+const nearbyYields: string[] = [];
+const nearbyInsights: {
+  suburb: string;
+  houseYield?: number;
+  unitYield?: number;
+}[] = []; // for GPT summary
+let nearbyCount = 0;
+
+for (const nSuburb of nearbySuburbs) {
+  if (nearbyCount >= maxNearby) break;
+
+  const records = await fetchMedianPrice(nSuburb);
+  const house = records.find(r => r.year === latestYear && r.propertyType.toLowerCase() === 'house');
+  const unit = records.find(r => r.year === latestYear && r.propertyType.toLowerCase() === 'unit');
+
+  if (house?.medianPrice && unit?.medianPrice) {
+   const yieldHouse = parseFloat(((weeklyRent * 52) / house.medianPrice * 100).toFixed(1));
+const yieldUnit = parseFloat(((weeklyRent * 52) / unit.medianPrice * 100).toFixed(1));
+
+
+        //Push raw data for GPT summary
+    nearbyInsights.push({
+      suburb: nSuburb,
+      houseYield: yieldHouse,
+      unitYield: yieldUnit
+    });
+    nearbyYields.push(
+      `• **${nSuburb}** → 🏠 House: ${yieldHouse}%, 🏢 Unit: ${yieldUnit}%`
+    );
+
+    nearbyCount++;
+  }
+}
+
+const nearbyMsg = nearbyYields.length
+  ? `\n\n🔎 **Nearby Suburbs**\n\n${nearbyYields.map(line => `• ${line}`).join('\n')}`
+  : "";
+
+// Step 5: State-level averages
+  const { house: stateAvgHouse, unit: stateAvgUnit } = await getStateAverageYields(state, currentYear);
+  console.log('[DEBUG-RY1] State averages - House:', stateAvgHouse, 'Unit:', stateAvgUnit);
+
+  // Step 6: Exec Summary from AI
+  //const userHouse = yieldTrends.house?.at(-1) || null; - not used. 
+  const userUnit = yieldTrends.unit?.at(-1) || null;
+
+  const summary = await generateRentalYieldSummary({
+    suburb,
+    year: currentYear,
+    userHouseYield: parseFloat(estimatedYield),
+    userUnitYield: userUnit ? parseFloat(userUnit.replace(/.*:\s/, '').replace('%', '')) : undefined,
+    nearbyInsights,
+     state,
+    stateAvgHouseYield: typeof stateAvgHouse === 'number' ? stateAvgHouse : undefined,
+    stateAvgUnitYield: typeof stateAvgUnit === 'number' ? stateAvgUnit : undefined
+    
+  });
+
+// Step 8: Build reply
+// Step 9: Build reply with yield context
+const yieldValue = parseFloat(estimatedYield);
+const yieldCategory = yieldValue >= 5 ? "🟢 High" : 
+                     yieldValue >= 3.5 ? "🟡 Moderate" : "🔴 Low";
+
+console.log('[DEBUG-RY1] Yield categorization:', { estimatedYield, yieldValue, yieldCategory });
+const stateAvgDisplay = typeof stateAvgHouse === 'number' ? ` vs ${state} avg: ${stateAvgHouse}%` : '';
+
+const reply = `📊 **Rental Insights for ${suburb}**
+
+- Median Weekly Rent: $${weeklyRent}
+- Median House Price: $${medianPrice.toLocaleString()}
+- Estimated Gross Yield: ${estimatedYield}% (${yieldCategory})${stateAvgDisplay}
+
+${summary ? `🔍 **Executive Summary**\n${summary}\n` : ''}
+${trendSection}${nearbyMsg}
+
+💡 Data combines LGA and suburb level insights for indicative analysis.`;
+
+console.log('[DEBUG-RY1] Final reply generated successfully');
+return reply;
+
 }
