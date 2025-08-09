@@ -42,24 +42,24 @@ export function HeroSection() {
     <section className="py-20 px-4 sm:px-6 lg:px-8 font-dm-sans bg-transparent">
       <div className="max-w-4xl mx-auto text-center">
 <h1 className="text-5xl md:text-6xl font-semibold text-center mb-6 bg-gradient-to-r from-[#28C381] to-[#27A4C8] bg-clip-text text-transparent leading-[1.1]">
-  Get Actionable Property Insights in Seconds
+  Suburb Insights in Seconds
 </h1>
-       <p className="text-xl text-gray-600 mt-2 mb-2 max-w-2xl mx-auto leading-relaxed">
-  Research Victorian suburbs with data-driven insights – powered by government data and AI analysis.
+       <p className="text-xl text-gray-600 mt-2 mb-6 max-w-2xl mx-auto leading-relaxed">
+  Get unbiased, data-driven suburb insights built on official sources.
 </p>
 
-<p className="text-sm text-gray-500 mb-10">
-  Built on official government datasets. No sales bias. Just insights.
+<p className="text-sm text-gray-500 mb-6">
+  Ask a question below to get instant property insights.
 </p>
 
 
-<div className="max-w-2xl mx-auto mb-8">
+<div className="max-w-2xl mx-auto mb-6">
   <div className="p-[2px] rounded-[16px] bg-[radial-gradient(circle,_#00FF92,_#0AC4FA)]">
     <div className="flex items-center justify-between bg-white rounded-[14px] p-3">
       {/* Input Field */}
       <input
         type="text"
-        placeholder="Ask me anything about Victorian suburbs.."
+        placeholder="Type a suburb or property question…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => {
@@ -90,7 +90,7 @@ export function HeroSection() {
 
 {/* Mini CTA below input box */}
 <p className="text-sm text-gray-500 mt-3 mb-3 tracking-wide">
-  Now supporting over <span className="font-semibold text-[#28C381]">2,000</span> Victorian suburbs. NSW & QLD coming soon.
+  Now covering over <span className="font-semibold text-[#28C381]">2,000</span> Victorian suburbs. NSW & QLD coming soon.
 </p>
 
 

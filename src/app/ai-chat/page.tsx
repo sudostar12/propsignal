@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState, Suspense } from "react";
-import { Check, Copy, ThumbsDown, ThumbsUp, ArrowLeft } from "lucide-react";
+import { Check, Copy, ThumbsDown, ThumbsUp, ArrowLeft, ArrowUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -391,29 +391,29 @@ li: ({ children }) => (
           if (value.length <= MAX_CHARS) setInput(value);
         }}
         onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-        placeholder="Ask anything about suburbs, prices, rent, or growth..."
+        placeholder="Ask anything about Victorian suburbs..."
         className="flex-1 text-sm font-medium text-[#3D4540] placeholder:text-gray-400 outline-none bg-white" //bg-white prevents ios/Andriod dark mode from turning it black.
       />
       <span className="text-xs text-gray-400">
         {input.trim().length} / {MAX_CHARS}
       </span>
     <button
-  disabled={input.trim().length < 1}
+  disabled={input.trim().length < 3}
   onClick={() => sendMessage()}
-  className={`ml-3 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
-    input.trim().length >= 3
-      ? "bg-[#28C381] hover:bg-[#1fa56b]"
-      : "bg-[#C5CBC7] opacity-70"
+  className={`ml-3 w-7 h-7 p-2 rounded-full flex items-center justify-center transition ${
+    input.trim().length < 3
+      ? 'bg-gray-300 cursor-not-allowed opacity-60'
+      : 'bg-gradient-to-b from-[#28C381] to-[#27A4C8] hover:opacity-90'
   }`}
 >
-  <div className="w-[9px] h-[11px] bg-white" />
+  <ArrowUp size={14} className="text-white" />
 </button>
 
     </div>
 
     {/* Subtext disclaimer */}
     <p className="text-center text-xs text-gray-400">
-      AI-generated insights. Always verify important property decisions.
+      For research purposes only. Always verify important property decisions.
     </p>
   </div>
 </div>

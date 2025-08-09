@@ -14,7 +14,7 @@ export function FeaturesSection() {
     },
     {
       icon: Zap,
-      title: "Instant Analysis",
+      title: "Instant Insights",
       description: "Type your question and get answers in seconds.",
     },
   ]

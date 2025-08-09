@@ -37,7 +37,7 @@ export async function generateGeneralReply(messages: ChatMessage[], topic:string
           If the user prompt is too vague or generic (e.g. "what can you help with", "show me insights", etc), include a helpful tip section at the end of your reply, like:
 
 
-## 💡 Tips to get the best insights:**
+💡**Tips to get the best insights:**
 - **Ask about a suburb**: "What’s the crime rate in Melton?"
 - **Compare suburbs**: "Box Hill vs Doncaster for investment"
 - **Get rent or price data**: "Median house price in Tarneit"
