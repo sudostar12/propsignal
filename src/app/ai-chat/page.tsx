@@ -36,6 +36,7 @@ function AIChatPageInner() {
 const [showScrollDown, setShowScrollDown] = useState(false);
 const chatContainerRef = useRef<HTMLDivElement | null>(null);
 const [copiedUserIndex, setCopiedUserIndex] = useState<number | null>(null) // this is for the user copy button
+const [useSmartSystem, setUseSmartSystem] = useState(false); // Smart system toggle
 const hasSentInitialQuery = useRef(false);
 
 
@@ -133,7 +134,7 @@ useEffect(() => {
     const res = await fetch("/api/ai-chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: updatedMessages, clarification_count: clarificationCount }),
+      body: JSON.stringify({ messages: updatedMessages, clarification_count: clarificationCount, useSmartSystem: useSmartSystem }),
     });
 
     const data = await res.json();
@@ -170,6 +171,41 @@ useEffect(() => {
   </div>
 </div>
 
+{/* Smart System Toggle - Add this BEFORE the chat-container div */}
+<div className="px-4 mb-4">
+  <div className="max-w-[700px] mx-auto p-3 bg-gray-50 rounded-lg border">
+    <label className="flex items-center justify-between cursor-pointer">
+      <div className="flex items-center space-x-3">
+        <input
+          type="checkbox"
+          checked={useSmartSystem}
+          onChange={(e) => setUseSmartSystem(e.target.checked)}
+          className="form-checkbox h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+        />
+        <div>
+          <span className="text-sm font-medium text-gray-900">
+            🧠 Smart Analysis
+            {useSmartSystem && <span className="text-green-600 ml-2">✓</span>}
+          </span>
+          <p className="text-xs text-gray-600">
+            {useSmartSystem 
+              ? "AI dynamically analyzes your questions" 
+              : "Using standard response system"
+            }
+          </p>
+        </div>
+      </div>
+      
+      {/* Status indicator */}
+      <div className="flex items-center space-x-2">
+        <div className={`w-2 h-2 rounded-full ${useSmartSystem ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+        <span className="text-xs text-gray-500 font-mono">
+          {useSmartSystem ? 'SMART' : 'STD'}
+        </span>
+      </div>
+    </label>
+  </div>
+</div>
 
 <div ref={chatContainerRef}
      id="chat-container"
@@ -220,17 +256,27 @@ useEffect(() => {
                 transition={{ duration: 0.25, ease: "easeOut" }}
                 className="flex items-start gap-3 pt-4 border-t border-gray-100 px-4 sm:px-0"
               >
-                {/* ✅ AI response with logo */}
-                <div className="p-[1px] rounded-[7px] border border-white bg-[linear-gradient(149deg,rgba(255,255,255,0.5)_0%,rgba(39,166,193,0.05)_41%,rgba(39,166,193,0.14)_100%)] shadow-[24px_24px_40px_rgba(24,61,130,0.1)] backdrop-blur-[4.8px]">
-                  <div className="w-7 h-7 bg-gradient-to-b from-[#28C381] to-[#27A4C8] rounded-[8px] flex items-center justify-center">
-                    <Image
-                      src="/PropSignal-logo.svg"
-                      alt="PropSignal Logo"
-                      width={25}
-                      height={25}
-                    />
-                  </div>
-                </div>
+                {/* ✅ AI response with logo and smart indicator */}
+<div className="relative">
+  <div className="p-[1px] rounded-[7px] border border-white bg-[linear-gradient(149deg,rgba(255,255,255,0.5)_0%,rgba(39,166,193,0.05)_41%,rgba(39,166,193,0.14)_100%)] shadow-[24px_24px_40px_rgba(24,61,130,0.1)] backdrop-blur-[4.8px]">
+    <div className="w-7 h-7 bg-gradient-to-b from-[#28C381] to-[#27A4C8] rounded-[8px] flex items-center justify-center">
+      <Image
+        src="/PropSignal-logo.svg"
+        alt="PropSignal Logo"
+        width={25}
+        height={25}
+      />
+    </div>
+  </div>
+  
+  {/* Smart system indicator */}
+  {useSmartSystem && (
+    <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full border border-white" 
+         title="Smart Analysis Active">
+      <div className="w-full h-full bg-purple-500 rounded-full animate-pulse"></div>
+    </div>
+  )}
+</div>
                 {/* ✅ AI response layout */}
                 <div className="prose prose-sm max-w-none text-[#3D4540] font-dm-sans break-words">
 <ReactMarkdown

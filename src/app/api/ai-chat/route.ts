@@ -12,13 +12,55 @@ import { answerNewProjects } from "@/utils/answers/newProjectsAnswer";
 import { getSuggestionsForTopic } from '@/utils/suggestions';
 import { answerMultiSuburbComparison } from "@/utils/answers/multiSuburbAnswer";
 import { setSuburbContext } from "@/utils/contextManager";
+//import { planUserQuery } from "@/utils/smartPlanner";
+//import { executePlan } from "@/utils/queryExecutor";
+//import { toTitle } from "@/utils/formatters";
 
 
 export async function POST(req: NextRequest) {
   try {
     console.log('\n[DEBUG route.ts] ======== NEW REQUEST ========');
 
-    const { messages } = await req.json();
+    //const { messages } = await req.json();
+
+    // Smart system toggle and delegation
+const body = await req.json();
+const { messages, useSmartSystem } = body;
+
+// If smart system is requested, delegate to smart route
+if (useSmartSystem === true) {
+  console.log('[DEBUG route.ts] Delegating to smart system');
+  
+  try {
+    // Forward to smart route  
+    const smartResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai-chat-smart`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages, useSmartSystem: true }),
+    });
+    
+    if (!smartResponse.ok) {
+      throw new Error(`Smart system failed with status: ${smartResponse.status}`);
+    }
+    
+    const smartData = await smartResponse.json();
+    
+    // Add a flag to indicate this came from smart system
+    return NextResponse.json({
+      ...smartData,
+      fromSmartSystem: true
+    });
+  } catch (error) {
+    console.error('[ERROR route.ts] Smart system delegation failed:', error);
+    // Fall back to original system
+    console.log('[DEBUG route.ts] Falling back to original system due to smart system error');
+  }
+}
+
+// Continue with existing logic...
+
     const userInput = messages?.[messages.length - 1]?.content || '';
     console.log('[DEBUG route.ts] User input:', userInput);
 

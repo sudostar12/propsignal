@@ -18,38 +18,6 @@ export async function fetchMedianPrice(suburb: string, minYear?: number, maxYear
       
      const { data, error } = await query;
     
-    /* - TEMP commented - to test exact match functionality - delete if tested working - 08/07/2025
-
-    // If no exact match, try case-insensitive with year filter
-    if (!data || data.length === 0) {
-      console.log('[DEBUG fetchSuburbData] fetchMedianPrice - Trying case-insensitive match...');
-      const result = await supabase
-        .from('median_price')
-        .select('*')
-        .ilike('suburb', suburb)
-        .gte('year', startYear)
-        .order('year', { ascending: true });
-      
-      data = result.data;
-      error = result.error;
-      console.log('[DEBUG fetchSuburbData] fetchMedianPrice - Case-insensitive results:', data?.length || 0, 'records');
-    }
-    
-    // If still no match, try partial match with year filter
-    if (!data || data.length === 0) {
-      console.log('[DEBUG] fetchMedianPrice - Trying partial match...');
-      const result = await supabase
-        .from('median_price')
-        .select('*')
-        .ilike('suburb', `%${suburb}%`)
-        .gte('year', startYear)
-        .order('year', { ascending: true });
-      
-      data = result.data;
-      error = result.error;
-      console.log('[DEBUG fetchSuburbData] fetchMedianPrice - Partial match results:', data?.length || 0, 'records');
-    }
-    */
    if (error || !data) {
   console.error('[ERROR] fetchMedianPrice - Database error:', error);
   return []; // Return empty array to match type
@@ -182,8 +150,8 @@ export async function fetchPopulation(suburb: string) {
   }
 }
 
-export async function fetchRentals(lga: string) {
-  console.log('[DEBUG fetchSuburbData] fetchRentals - Searching for LGA:', lga);
+export async function fetchRentals(suburb: string) {
+  console.log('[DEBUG fetchSuburbData] fetchRentals - Searching for suburb:', suburb);
   
   try {
     // OPTIMIZED: Only get last 3 years and specific bedroom configurations
@@ -191,18 +159,18 @@ export async function fetchRentals(lga: string) {
     const startYear = currentYear - 3; // Last 3 years
     
     console.log('[DEBUG fetchSuburbData] fetchRentals - Filtering for years:', startYear, 'to', currentYear);
-    console.log('[DEBUG fetchSuburbData] fetchRentals - Target bedrooms: Houses (3BHK, 4BHK), Units (2BHK)');
+    console.log('[DEBUG fetchSuburbData] fetchRentals - Target bedrooms: Houses (3, 4), Units (2)');
     
     const { data, error } = await supabase
       .from('median_rentals')
       .select('*')
-      .ilike('lga', `%${lga}%`)
+      .eq('suburb', suburb)
       .gte('year', startYear) // Only last 3 years
       .or(
-        // Houses: 3BHK and 4BHK only
-        'and(propertyType.ilike.%house%,bedroom.in.("3BHK","4BHK")),' +
-        // Units: 2BHK only  
-        'and(propertyType.ilike.%unit%,bedroom.eq.2BHK)'
+        // Houses: 3 and 4 bedrooms only
+        'and(propertyType.ilike.%house%,bedroom.in.(3,4)),' +
+        // Units: 2 bedrooms only  
+        'and(propertyType.ilike.%unit%,bedroom.eq.2)'
       )
       .order('year', { ascending: true });
     
@@ -220,8 +188,8 @@ export async function fetchRentals(lga: string) {
       const years = Array.from(new Set(data.map((d: { year?: number }) => d.year).filter(Boolean))).sort();
       
       console.log('[DEBUG fetchSuburbData] fetchRentals - Results breakdown:');
-      console.log('  - Houses (3BHK/4BHK):', houses.length, 'records');
-      console.log('  - Units (2BHK):', units.length, 'records');
+      console.log('  - Houses (3/4):', houses.length, 'records');
+      console.log('  - Units (2):', units.length, 'records');
       console.log('  - Years covered:', years);
       console.log('  - Sample data:', data[0]);
     }
@@ -232,6 +200,53 @@ export async function fetchRentals(lga: string) {
   } catch (err) {
     console.error('[ERROR] fetchRentals - Exception:', err);
     return { data: null, error: err };
+  }
+}
+
+// Fetch rental yield values from median_rentals table where bedroom = "all"
+export async function fetchRentalYield(suburb: string, year?: number) {
+  console.log('[DEBUG-FRY] Fetching rental yield for suburb:', suburb, 'year:', year);
+  
+  try {
+    let query = supabase
+      .from('median_rentals')
+      .select('propertyType, rentalYield, year, suburb')
+      .eq('suburb', suburb)
+      .eq('bedroom', 'all')
+      .not('rentalYield', 'is', null); // Only get records where rentalYield is not null
+
+    // If year is provided, filter by that year, otherwise get the latest year
+    if (year) {
+      query = query.eq('year', year);
+    } else {
+      // Get the latest year available for this suburb
+      const { data: yearData } = await supabase
+        .from('median_rentals')
+        .select('year')
+        .eq('suburb', suburb)
+        .eq('bedroom', 'all')
+        .not('rentalYield', 'is', null)
+        .order('year', { ascending: false })
+        .limit(1);
+      
+      if (yearData && yearData.length > 0) {
+        query = query.eq('year', yearData[0].year);
+      }
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[ERROR-FRY] Error fetching rental yield:', error);
+      return { data: null, error };
+    }
+
+    console.log('[DEBUG-FRY] Rental yield data found:', data?.length || 0, 'records');
+    return { data, error: null };
+
+  } catch (error) {
+    console.error('[ERROR-FRY] Exception in fetchRentalYield:', error);
+    return { data: null, error };
   }
 }
 
@@ -279,59 +294,12 @@ export async function fetchCrime(suburb: string)
     
     console.log('[DEBUG fetchSuburbData] fetchCrime - Exact match results:', suburbData?.length || 0, 'records');
 
-    /* To be DELETED - as the case-insensitive suburb logic is in detectSuburb.ts 
-    // Try case-insensitive if no exact match
-    if (!data || data.length === 0) {
-      console.log('[DEBUG fetchSuburbData] fetchCrime - Trying case-insensitive match...');
-      const result = await supabase
-        .from('crime_stats')
-        .select('offenceCount, year, suburb')
-        .ilike('suburb', suburb)
-        .not('offenceCount', 'is', null)
-        .gte('year', startYear)
-        .order('year', { ascending: true });
-      
-      data = result.data;
-      error = result.error;
-      console.log('[DEBUG fetchSuburbData] fetchCrime - Case-insensitive results:', data?.length || 0, 'records');
-    }
-    
-    // Try partial match if still no results
-    if (!data || data.length === 0) {
-      console.log('[DEBUG fetchSuburbData] fetchCrime - Trying partial match...');
-      const result = await supabase
-        .from('crime_stats')
-        .select('offenceCount, year, suburb')
-        .ilike('suburb', `%${suburb}%`)
-        .not('offenceCount', 'is', null)
-        .gte('year', startYear)
-        .order('year', { ascending: true });
-      
-      data = result.data;
-      error = result.error;
-      console.log('[DEBUG fetchSuburbData] fetchCrime - Partial match results:', data?.length || 0, 'records');
-    }
-      */
     
     if (suburbError) {
       console.error('[ERROR fetchCrime] - Suburb error:', suburbError);
       return { suburbData: null, nearbyData: null, error: suburbError };
     }
-    /* - temp commented out pending testing. 
-    // --- Fetch other suburbs in same LGA, only latest year ---
-  const { data: nearbyData, error: nearbyError } = await supabase
-    .from('crime_stats')
-    .select('offenceCount, year, suburb')
-   // .eq('lga', lga) - this can be re-added once lga column is added to table. useful for nearby suburb crime stats based on lga. 
-    .eq('year', currentYear)
-    .neq('suburb', suburb)
-    .limit(5);
 
-  if (nearbyError) {
-    console.error('[ERROR fetchCrime] Nearby error:', nearbyError);
-    return { suburbData, nearbyData, error: suburbError || nearbyError };
-}
-*/
     // Log sample data for debugging
     if (suburbData && suburbData.length > 0) {
       console.log('[DEBUG fetchSuburbData] fetchCrime - Sample record:', suburbData[0]);
@@ -432,3 +400,127 @@ export async function fetchHouseholdForecast(suburb: string) {
     return { data: null, error: err };
   }
 }
+
+// ===================== Unified latest suburb metrics helper (ADD BELOW) =====================
+
+/**
+ * Shape returned by the materialized view `mv_latest_suburb_metrics`.
+ * Adjust if you later add more fields to the MV.
+ */
+export type LatestSuburbMetricsRow = {
+  state: string;
+  suburb: string;
+  propertyType: 'house' | 'unit';
+  bedroom: number | null;                // null when price-only row
+  price_year: number | null;
+  price_median: number | null;
+  price_pctChange1Yr: number | null;
+  price_pctChange10Yr: number | null;
+  rent_year: number | null;
+  rent_median: number | null;
+  lga: string | null;
+};
+
+/**
+ * Parameters for fetching latest metrics.
+ */
+export type LatestSuburbMetricsParams = {
+  state: string;                         // e.g., 'VIC'
+  suburb: string;                        // e.g., 'Box Hill'
+  propertyType?: 'house' | 'unit';       // optional filter
+  bedroom?: number;                      // optional; applies to rent dimension
+};
+
+/**
+ * Generic interface for the Supabase client so we don't force a specific import here.
+ * Pass in the client you already use elsewhere in this file.
+ */
+export interface ISupabaseClient {
+  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }>;
+}
+
+/**
+ * Unified fetch: tries the RPC first when the feature flag is enabled.
+ * - If RPC returns rows, we use them.
+ * - If RPC errors/empty and STRICT=false, we call your fallback (legacy) function.
+ * - If the flag is OFF, we call fallback directly (no behaviour change).
+ *
+ * @param supabase   Your existing Supabase client instance (do not create a new one).
+ * @param params     Filters for state/suburb/propertyType/bedroom.
+ * @param fallback   A function that returns the legacy shape you currently use.
+ *                   Example: () => legacyFetchLatestSuburbMetrics(params)
+ */
+export async function getLatestSuburbMetrics(
+  supabase: ISupabaseClient,
+  params: LatestSuburbMetricsParams,
+  fallback: () => Promise<{ rows: any[]; source: string }>
+): Promise<{ rows: LatestSuburbMetricsRow[]; source: 'unified' | 'legacy' | 'unified-empty-fallback' | 'unified-error-fallback' }> {
+  const useUnified = String(process.env.NEXT_PUBLIC_USE_UNIFIED_METRICS) === 'true';
+  const strict = String(process.env.NEXT_PUBLIC_UNIFIED_METRICS_STRICT) === 'true';
+
+  // Debug logging (visible in browser devtools or server logs depending on caller context)
+  console.log('[getLatestSuburbMetrics] flags', { useUnified, strict });
+  console.log('[getLatestSuburbMetrics] params', params);
+
+  // Helper to safely normalise outputs
+  const normaliseRows = (rows: any[]): LatestSuburbMetricsRow[] => {
+    return (rows || []).map((r: any) => ({
+      state: r.state ?? null,
+      suburb: r.suburb ?? null,
+      propertyType: r.propertyType,
+      bedroom: r.bedroom ?? null,
+      price_year: r.price_year ?? null,
+      price_median: r.price_median ?? null,
+      price_pctChange1Yr: r.price_pctChange1Yr ?? null,
+      price_pctChange10Yr: r.price_pctChange10Yr ?? null,
+      rent_year: r.rent_year ?? null,
+      rent_median: r.rent_median ?? null,
+      lga: r.lga ?? null,
+    })) as LatestSuburbMetricsRow[];
+  };
+
+  // 1) Try unified path (RPC) if enabled
+  if (useUnified) {
+    try {
+      const { data, error } = await supabase.rpc('fn_get_latest_suburb_metrics', {
+        p_state: params.state,
+        p_suburb: params.suburb,
+        p_property_type: params.propertyType ?? null,
+        p_bedroom: params.bedroom ?? null,
+      });
+
+      if (error) {
+        console.warn('[getLatestSuburbMetrics] RPC error:', error?.message || error);
+        if (strict) throw error;
+        // Soft fallback
+        const fb = await fallback();
+        return { rows: normaliseRows(fb.rows), source: 'unified-error-fallback' };
+      }
+
+      if (Array.isArray(data) && data.length > 0) {
+        const rows = normaliseRows(data);
+        console.log('[getLatestSuburbMetrics] RPC rows=', rows.length);
+        return { rows, source: 'unified' };
+      }
+
+      console.warn('[getLatestSuburbMetrics] RPC returned 0 rows.');
+      if (strict) {
+        // No fallback when STRICT=true
+        return { rows: [], source: 'unified' };
+      }
+      // Soft fallback
+      const fb = await fallback();
+      return { rows: normaliseRows(fb.rows), source: 'unified-empty-fallback' };
+    } catch (err: any) {
+      console.error('[getLatestSuburbMetrics] RPC threw exception:', err?.message || err);
+      if (strict) throw err;
+      const fb = await fallback();
+      return { rows: normaliseRows(fb.rows), source: 'unified-error-fallback' };
+    }
+  }
+
+  // 2) If unified flag is OFF, use legacy path exactly as before
+  const fb = await fallback();
+  return { rows: normaliseRows(fb.rows), source: 'legacy' };
+}
+// ===================== End unified helper (ADD ABOVE) =====================
