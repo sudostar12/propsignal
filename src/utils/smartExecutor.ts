@@ -18,7 +18,7 @@ type YieldSeriesPoint = { year: number; value: number | null };
 type YieldSeries = { propertyType: PT; points: YieldSeriesPoint[] };
 type SeriesRow = { year: number; propertyType: string; yieldPct: number };
 
-export async function executePlan(plan: QueryPlan) {
+export async function executePlan(plan: QueryPlan): Promise<Record<string, unknown> | { error: string }> {
   console.log("[executor] plan:", JSON.stringify(plan));
   const suburb = plan.suburb;
   const state = plan.state;
@@ -26,7 +26,7 @@ export async function executePlan(plan: QueryPlan) {
     return { error: "No suburb detected. Please specify a suburb (e.g., 'Doncaster VIC')." };
   }
 
-  const out: Record<string, any> = { suburb, state, plan };
+  const out: Record<string, unknown> = { suburb, state, plan };
 
   // --- Headline rollup price & rent (bedroom = NULL) ---
   if (plan.actions.includes("price_rent_latest")) {
@@ -34,13 +34,19 @@ export async function executePlan(plan: QueryPlan) {
   }
 
   // --- Yields (latest from rollups) ---
-  if (plan.actions.includes("yield_latest")) {
-    const pr = out.latestPR ?? (await getRollupLatestPriceRent(suburb, state));
-    const { year, price, rent } = pr || {};
-    const calc = (rw?: number | null, prc?: number | null): number | null =>
-      typeof rw === "number" && typeof prc === "number" && prc > 0
-        ? Number((((rw * 52) / prc) * 100).toFixed(1))
-        : null;
+if (plan.actions.includes("yield_latest")) {
+  const pr = out.latestPR ?? (await getRollupLatestPriceRent(suburb, state));
+  
+  // Type assertion to safely access properties
+  const prData = pr as { year?: number | null; price?: { house?: number | null; unit?: number | null }; rent?: { house?: number | null; unit?: number | null } } | undefined;
+  const { year, price, rent } = prData || {};
+  
+  const calc = (rw?: number | null, prc?: number | null): number | null =>
+    typeof rw === "number" && typeof prc === "number" && prc > 0
+      ? Number((((rw * 52) / prc) * 100).toFixed(1))
+      : null;
+
+  // Rest of your yield calculation code...
 
     out.latestYieldYear = typeof year === "number" ? year : null;
     out.latestYield = {

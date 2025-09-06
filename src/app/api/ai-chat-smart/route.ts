@@ -22,13 +22,13 @@ import { executePlan } from "@/utils/smartExecutor";
 import { formatMarkdownReply } from "@/utils/responseFormatter";
 import { generateRentalYieldSummary } from "@/utils/fetchRentalData";
 import { getContext } from '@/utils/contextManager';
-import { planFiltersOnly } from "@/utils/smartPlanner";
-import { executeFilterPlan } from "@/utils/dynamicExecutor";
+//import { planFiltersOnly } from "@/utils/smartPlanner";
+//import { executeFilterPlan } from "@/utils/dynamicExecutor";
 
 // Safe UUID for both Node/Edge
 function safeUUID(): string {
   try {
-    // @ts-ignore - global crypto is available in modern runtimes
+    
     return (globalThis.crypto?.randomUUID?.() as string) || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   } catch {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       result.latestPR?.year ??
       new Date().getFullYear();
 
-    const nearbyInsights = (result.nearbyCompare?.rows || []).map((r: any) => ({
+    const nearbyInsights = (result.nearbyCompare?.rows || []).map((r: { suburb: string; house?: number; unit?: number }) => ({
       suburb: r.suburb,
       houseYield: typeof r.house === "number" ? r.house : undefined,
       unitYield: typeof r.unit === "number" ? r.unit : undefined,
@@ -120,7 +120,7 @@ ${summary}
       clarificationNeeded: false,
       smartMetadata: { plan, result },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[ai-chat-smart] fatal error", err);
     return NextResponse.json(
       {
@@ -130,7 +130,7 @@ ${summary}
         showCopy: true,
         allowFeedback: true,
         clarificationNeeded: true,
-        smartMetadata: { error: String(err?.message || err) },
+        smartMetadata: { error: err instanceof Error ? err.message : String(err) },
       },
       { status: 500 }
     );

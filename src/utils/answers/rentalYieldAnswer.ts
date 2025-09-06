@@ -75,7 +75,7 @@ export async function answerRentalYield(suburb: string, lga: string) {
     if (unitYieldRecord && unitYieldRecord.rentalYield) {
       latestYieldUnit = unitYieldRecord.rentalYield;
       latestYieldYear = unitYieldRecord.year;
-      usePreCalculated = true;
+      //usePreCalculated = true;
       console.log('[DEBUG-RY1] Using pre-calculated unit yield:', latestYieldUnit);
     }
   } else {

@@ -15,8 +15,8 @@ export const Op = z.enum(["eq", "in", "between", "is_null", "not_null"]);
 export const Filter = z.object({
   col: ColName,
   op: Op,
-  value: z.any().optional(),
-  values: z.array(z.any()).optional()
+  value: z.unknown().optional(),
+  values: z.array(z.unknown()).optional()
 });
 
 export const Select = z.array(z.enum([
@@ -39,7 +39,7 @@ export const TableQuery = z.object({
 });
 
 export type TTableQuery = z.infer<typeof TableQuery>;
-export type TResultRow = Record<string, any>;
+export type TResultRow = Record<string, unknown>;
 
 // 2) Compiler: TableQuery -> Supabase query
 export async function runTableQuery(q: TTableQuery): Promise<TResultRow[]> {
@@ -58,7 +58,7 @@ export async function runTableQuery(q: TTableQuery): Promise<TResultRow[]> {
         break;
       }
       case "is_null":  sb = sb.is(f.col, null); break;
-      case "not_null": sb = sb.not(f.col, "is", null as any); break;
+      case "not_null": sb = sb.not(f.col, "is", null); break;
       default: break;
     }
   }
@@ -71,5 +71,11 @@ export async function runTableQuery(q: TTableQuery): Promise<TResultRow[]> {
     console.error("[queryFilters] Supabase error", { id: q.id, error });
     return [];
   }
-  return data ?? [];
+  
+  // Use the two-step conversion TypeScript suggests
+  if (Array.isArray(data)) {
+    return data as unknown as TResultRow[];
+  }
+  
+  return [];
 }

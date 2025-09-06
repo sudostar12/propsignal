@@ -5,9 +5,30 @@ const FilterPlanSchema = z.object({
   tableQueries: z.array(TableQuery),
   derive: z.array(z.enum(["yield_pct"])).optional()
 });
-export type ExecutedBundle = Record<string, any[]>;
 
-export async function executeFilterPlan(rawPlan: any): Promise<{ bundle: ExecutedBundle; derived?: Record<string, any[]> }> {
+// Define proper types
+interface TableRecord {
+  suburb: string;
+  state: string;
+  year: number;
+  propertyType: string;
+  bedroom?: number | null;
+  median_rent_weekly?: number;
+  median_price?: number;
+}
+
+interface YieldRecord {
+  suburb: string;
+  state: string;
+  year: number;
+  propertyType: string;
+  bedroom: number | null;
+  yieldPct: number;
+}
+
+export type ExecutedBundle = Record<string, unknown[]>;
+
+export async function executeFilterPlan(rawPlan: unknown): Promise<{ bundle: ExecutedBundle; derived?: Record<string, YieldRecord[]> }> {
   const plan = FilterPlanSchema.safeParse(rawPlan);
   if (!plan.success) {
     console.error("[dynamicExecutor] invalid filter plan", plan.error);
@@ -20,14 +41,14 @@ export async function executeFilterPlan(rawPlan: any): Promise<{ bundle: Execute
   }
 
   // Optional derived metrics (we keep generic)
-  const derived: Record<string, any[]> = {};
+  const derived: Record<string, YieldRecord[]> = {};
   if (plan.data.derive?.includes("yield_pct")) {
     // If the plan named the pulls "price" and "rent", compute yield on shared keys (year, propertyType, bedroom)
-    const price = bundle["price"] || bundle["prices"] || [];
-    const rent  = bundle["rent"]  || bundle["rents"]  || [];
-    const key = (r: any) => [r.suburb,r.state,r.year,r.propertyType,r.bedroom ?? null].join("|");
+    const price = (bundle["price"] || bundle["prices"] || []) as TableRecord[];
+    const rent  = (bundle["rent"]  || bundle["rents"]  || []) as TableRecord[];
+    const key = (r: TableRecord) => [r.suburb,r.state,r.year,r.propertyType,r.bedroom ?? null].join("|");
     const priceMap = new Map(price.map(r => [key(r), r]));
-    const out: any[] = [];
+    const out: YieldRecord[] = [];
     for (const rr of rent) {
       const pr = priceMap.get(key(rr));
       if (pr && typeof rr.median_rent_weekly === "number" && typeof pr.median_price === "number" && pr.median_price > 0) {

@@ -8,14 +8,12 @@ import type {
   ChatCompletionToolChoiceOption,
 } from "openai/resources/chat/completions";
 
-
 export type QueryAction =
   | "yield_latest"
   | "yield_series"
   | "price_rent_latest"
   | "bedroom_snapshot"
   | "compare_nearby";
-
 
 export type FilterPlan = {
   tableQueries: TTableQuery[];  // generic pulls the model wants
@@ -68,7 +66,7 @@ const filterTools: ChatCompletionTool[] = [
           derive: { type: "array", items: { type: "string", enum: ["yield_Pct"] } }
         },
         required: ["tableQueries"]
-      } as any
+      }
     }
   }
 ] as const;
@@ -95,8 +93,6 @@ export async function planFiltersOnly(
   const args = JSON.parse(call.function.arguments || "{}");
   return args as FilterPlan;
 }
-
-
 
 export type QueryPlan = {
   actions: QueryAction[];
@@ -156,11 +152,10 @@ export async function planUserQuery(
           wantMarkdown: { type: "boolean" },
         },
         required: ["actions"],
-      } as any,
+      },
     },
   },
 ];
-
 
   const system = [{
     role: "system" as const,
@@ -203,7 +198,7 @@ if (!args.years) args.years = { lastN: 3 };
 if (Array.isArray(args.bedrooms)) {
   args.bedrooms = Array.from(
     new Set(
-      (args.bedrooms as any[])
+      (args.bedrooms as unknown[])
         .map((n) => Number(n))
         .filter((n) => Number.isFinite(n) && Number.isInteger(n))
     )
@@ -213,14 +208,12 @@ if (Array.isArray(args.bedrooms)) {
   }
 }
 
-
 // If asking for bedroom snapshots, also fetch medians for header context
 if (Array.isArray(args.actions) &&
     args.actions.includes("bedroom_snapshot") &&
     !args.actions.includes("price_rent_latest")) {
   args.actions.push("price_rent_latest");
 }
-
 
   if (!args.propertyTypes?.length) args.propertyTypes = ["house", "unit"];
   if (!args.years) args.years = { lastN: 3 };

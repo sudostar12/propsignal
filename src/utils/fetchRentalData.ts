@@ -210,6 +210,7 @@ export async function getLatestBedPriceRent(
 
 // ⬇️ Add these two helpers somewhere above generateRentalYieldSummary()
 
+
 /** Latest rollup (bedroom=NULL) price+rent per propertyType for a suburb. */
 export async function getRollupLatestPriceRent(suburb: string, state?: string): Promise<{
   year: number | null;
@@ -242,17 +243,22 @@ export async function getRollupLatestPriceRent(suburb: string, state?: string): 
   const latestYear = Math.max(
     ...[(pRows||[]).map(r=>Number(r.year)), ...(rRows||[]).map(r=>Number(r.year))].flat().filter(Boolean)
   );
-  const pick = (rows:any[], pt:string) => rows.find(r => r.propertyType?.toLowerCase()===pt && Number(r.year)===latestYear);
+  
+  const pickPrice = (rows: { year: number; propertyType?: string; medianPrice?: number }[], pt: string) => 
+    rows.find(r => r.propertyType?.toLowerCase()===pt && Number(r.year)===latestYear);
+  
+  const pickRent = (rows: { year: number; propertyType?: string; medianRent?: number }[], pt: string) => 
+    rows.find(r => r.propertyType?.toLowerCase()===pt && Number(r.year)===latestYear);
 
   return {
     year: isFinite(latestYear) ? latestYear : null,
     price: {
-      house: pick(pRows||[], "house")?.median_price ?? null,
-      unit:  pick(pRows||[], "unit")?.median_price ?? null,
+      house: pickPrice(pRows||[], "house")?.medianPrice ?? null,
+      unit:  pickPrice(pRows||[], "unit")?.medianPrice ?? null,
     },
     rent: {
-      house: pick(rRows||[], "house")?.median_rent_weekly ?? null,
-      unit:  pick(rRows||[], "unit")?.median_rent_weekly ?? null,
+      house: pickRent(rRows||[], "house")?.medianRent ?? null,
+      unit:  pickRent(rRows||[], "unit")?.medianRent ?? null,
     },
   };
 }
@@ -288,8 +294,8 @@ export async function getLatestBedPriceRent(
   if (rErr) console.error("[fetchRentalData] bed rent query error", rErr);
   if (!pRows?.length || !rRows?.length) return null;
 
-  const latestYearBy = (rows:any[], b:number) =>
-    rows.filter(x=>x.bedroom===b).map(x=>Number(x.year)).sort((a,b)=>b-a)[0];
+  const latestYearBy = (rows: { bedroom: number; year: number }[], b: number) =>
+  rows.filter(x=>x.bedroom===b).map(x=>Number(x.year)).sort((a,b)=>b-a)[0];
 
   let best: { year:number; bedroom:number } | null = null;
   for (const b of bedroomPrefs) {

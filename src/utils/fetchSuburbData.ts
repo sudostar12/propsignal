@@ -436,7 +436,7 @@ export type LatestSuburbMetricsParams = {
  * Pass in the client you already use elsewhere in this file.
  */
 export interface ISupabaseClient {
-  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }>;
+  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
 }
 
 /**
@@ -453,7 +453,7 @@ export interface ISupabaseClient {
 export async function getLatestSuburbMetrics(
   supabase: ISupabaseClient,
   params: LatestSuburbMetricsParams,
-  fallback: () => Promise<{ rows: any[]; source: string }>
+  fallback: () => Promise<{ rows: Record<string, unknown>[]; source: string }>
 ): Promise<{ rows: LatestSuburbMetricsRow[]; source: 'unified' | 'legacy' | 'unified-empty-fallback' | 'unified-error-fallback' }> {
   const useUnified = String(process.env.NEXT_PUBLIC_USE_UNIFIED_METRICS) === 'true';
   const strict = String(process.env.NEXT_PUBLIC_UNIFIED_METRICS_STRICT) === 'true';
@@ -463,21 +463,21 @@ export async function getLatestSuburbMetrics(
   console.log('[getLatestSuburbMetrics] params', params);
 
   // Helper to safely normalise outputs
-  const normaliseRows = (rows: any[]): LatestSuburbMetricsRow[] => {
-    return (rows || []).map((r: any) => ({
-      state: r.state ?? null,
-      suburb: r.suburb ?? null,
-      propertyType: r.propertyType,
-      bedroom: r.bedroom ?? null,
-      price_year: r.price_year ?? null,
-      price_median: r.price_median ?? null,
-      price_pctChange1Yr: r.price_pctChange1Yr ?? null,
-      price_pctChange10Yr: r.price_pctChange10Yr ?? null,
-      rent_year: r.rent_year ?? null,
-      rent_median: r.rent_median ?? null,
-      lga: r.lga ?? null,
-    })) as LatestSuburbMetricsRow[];
-  };
+ const normaliseRows = (rows: Record<string, unknown>[]): LatestSuburbMetricsRow[] => {
+  return (rows || []).map((r: Record<string, unknown>) => ({
+    state: r.state ?? null,
+    suburb: r.suburb ?? null,
+    propertyType: r.propertyType,
+    bedroom: r.bedroom ?? null,
+    price_year: r.price_year ?? null,
+    price_median: r.price_median ?? null,
+    price_pctChange1Yr: r.price_pctChange1Yr ?? null,
+    price_pctChange10Yr: r.price_pctChange10Yr ?? null,
+    rent_year: r.rent_year ?? null,
+    rent_median: r.rent_median ?? null,
+    lga: r.lga ?? null,
+  })) as LatestSuburbMetricsRow[];
+};
 
   // 1) Try unified path (RPC) if enabled
   if (useUnified) {
@@ -490,7 +490,7 @@ export async function getLatestSuburbMetrics(
       });
 
       if (error) {
-        console.warn('[getLatestSuburbMetrics] RPC error:', error?.message || error);
+        console.warn('[getLatestSuburbMetrics] RPC error:', error instanceof Error ? error.message : error);
         if (strict) throw error;
         // Soft fallback
         const fb = await fallback();
@@ -509,14 +509,14 @@ export async function getLatestSuburbMetrics(
         return { rows: [], source: 'unified' };
       }
       // Soft fallback
-      const fb = await fallback();
-      return { rows: normaliseRows(fb.rows), source: 'unified-empty-fallback' };
-    } catch (err: any) {
-      console.error('[getLatestSuburbMetrics] RPC threw exception:', err?.message || err);
-      if (strict) throw err;
-      const fb = await fallback();
-      return { rows: normaliseRows(fb.rows), source: 'unified-error-fallback' };
-    }
+const fb = await fallback();
+return { rows: normaliseRows(fb.rows), source: 'unified-empty-fallback' };
+} catch (err: unknown) {
+  console.error('[getLatestSuburbMetrics] RPC threw exception:', err instanceof Error ? err.message : err);
+  if (strict) throw err;
+  const fb = await fallback();
+  return { rows: normaliseRows(fb.rows), source: 'unified-error-fallback' };
+}
   }
 
   // 2) If unified flag is OFF, use legacy path exactly as before
