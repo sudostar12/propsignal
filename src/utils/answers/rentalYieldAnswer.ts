@@ -55,7 +55,6 @@ export async function answerRentalYield(suburb: string, lga: string) {
   let latestYieldHouse = null;
   let latestYieldUnit = null;
   let latestYieldYear = latestRentalYear;
-  let usePreCalculated = false;
 
   // Check if we found pre-calculated yields
   if (!yieldError && preCalculatedYields && preCalculatedYields.length > 0) {
@@ -68,14 +67,12 @@ export async function answerRentalYield(suburb: string, lga: string) {
     if (houseYieldRecord && houseYieldRecord.rentalYield) {
       latestYieldHouse = houseYieldRecord.rentalYield;
       latestYieldYear = houseYieldRecord.year;
-      //usePreCalculated = true;
       console.log('[DEBUG-RY1] Using pre-calculated house yield:', latestYieldHouse);
     }
     
     if (unitYieldRecord && unitYieldRecord.rentalYield) {
       latestYieldUnit = unitYieldRecord.rentalYield;
       latestYieldYear = unitYieldRecord.year;
-      //usePreCalculated = true;
       console.log('[DEBUG-RY1] Using pre-calculated unit yield:', latestYieldUnit);
     }
   } else {
