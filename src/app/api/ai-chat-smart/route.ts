@@ -19,7 +19,7 @@
 import { NextResponse } from "next/server";
 import { planUserQuery } from "@/utils/smartPlanner";
 import { executePlan } from "@/utils/smartExecutor";
-import { formatMarkdownReply } from "@/utils/responseFormatter";
+import { formatMarkdownReply, FormatterResult } from "@/utils/responseFormatter";
 import { generateRentalYieldSummary } from "@/utils/fetchRentalData";
 import { getContext } from '@/utils/contextManager';
 //import { planFiltersOnly } from "@/utils/smartPlanner";
@@ -74,33 +74,67 @@ export async function POST(req: Request) {
         smartMetadata: { plan, result },
       });
     }
+// Type assertion after confirming no error
+const successResult = result as Record<string, unknown>;
 
-    // 3) SUMMARY — reuse your existing OpenAI summary builder
-    const yearForSummary =
-      result.latestYieldYear ??
-      result.latestPR?.year ??
-      new Date().getFullYear();
+// 3) SUMMARY — reuse your existing OpenAI summary builder
+const yearForSummary =
+  (successResult.latestYieldYear as number | null) ??
+  ((successResult.latestPR as { year?: number })?.year) ??
+  new Date().getFullYear();
 
-    const nearbyInsights = (result.nearbyCompare?.rows || []).map((r: { suburb: string; house?: number; unit?: number }) => ({
-      suburb: r.suburb,
-      houseYield: typeof r.house === "number" ? r.house : undefined,
-      unitYield: typeof r.unit === "number" ? r.unit : undefined,
-    }));
+const nearbyInsights = ((successResult.nearbyCompare as { rows?: unknown[] })?.rows || []).map((r: unknown) => {
+  const row = r as { suburb: string; house?: number; unit?: number };
+  return {
+    suburb: row.suburb,
+    houseYield: typeof row.house === "number" ? row.house : undefined,
+    unitYield: typeof row.unit === "number" ? row.unit : undefined,
+  };
+});
 
-    const summary = await generateRentalYieldSummary({
-      suburb: plan.suburb!,
-      year: yearForSummary,
-      userHouseYield: typeof result.latestYield?.house === "number" ? result.latestYield.house : undefined,
-      userUnitYield: typeof result.latestYield?.unit === "number" ? result.latestYield.unit : undefined,
-      nearbyInsights,
-      state: plan.state || "VIC",
-      stateAvgHouseYield: typeof result.capitalAvg?.house === "number" ? result.capitalAvg.house : undefined,
-      stateAvgUnitYield: typeof result.capitalAvg?.unit === "number" ? result.capitalAvg.unit : undefined,
-    });
+const latestYield = successResult.latestYield as { house?: number; unit?: number } | undefined;
+const capitalAvg = successResult.capitalAvg as { house?: number; unit?: number } | undefined;
 
-    // 4) FORMAT — produce your standard markdown body
-    const markdown = `${formatMarkdownReply(plan.suburb!, result)}
-    
+// Only call generateRentalYieldSummary if we have at least house yield data
+const houseYield = typeof latestYield?.house === "number" ? latestYield.house : undefined;
+
+if (houseYield !== undefined) {
+  const summary = await generateRentalYieldSummary({
+    suburb: plan.suburb!,
+    year: yearForSummary,
+    userHouseYield: houseYield, // Now guaranteed to be number
+    userUnitYield: typeof latestYield?.unit === "number" ? latestYield.unit : undefined,
+    nearbyInsights,
+    state: plan.state || "VIC",
+    stateAvgHouseYield: typeof capitalAvg?.house === "number" ? capitalAvg.house : undefined,
+    stateAvgUnitYield: typeof capitalAvg?.unit === "number" ? capitalAvg.unit : undefined,
+  });
+} else {
+  // Fallback summary when no house yield data is available
+  const summary = "Unable to generate yield analysis - insufficient house yield data available.";
+}
+
+// Make sure to declare summary outside the if block
+let summary: string;
+
+if (houseYield !== undefined) {
+  summary = await generateRentalYieldSummary({
+    suburb: plan.suburb!,
+    year: yearForSummary,
+    userHouseYield: houseYield,
+    userUnitYield: typeof latestYield?.unit === "number" ? latestYield.unit : undefined,
+    nearbyInsights,
+    state: plan.state || "VIC",
+    stateAvgHouseYield: typeof capitalAvg?.house === "number" ? capitalAvg.house : undefined,
+    stateAvgUnitYield: typeof capitalAvg?.unit === "number" ? capitalAvg.unit : undefined,
+  });
+} else {
+  summary = "Unable to generate yield analysis - insufficient house yield data available.";
+}
+
+// 4) FORMAT — produce your standard markdown body
+const markdown = `${formatMarkdownReply(plan.suburb!, successResult as FormatterResult)}
+ 
 🧭 **Summary**
 ${summary}
 

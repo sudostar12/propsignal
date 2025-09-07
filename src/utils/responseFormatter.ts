@@ -25,7 +25,7 @@ interface NearbyRow {
   unit: number | null;
 }
 
-interface FormatterResult {
+export interface FormatterResult {
   latestPR?: {
     year?: number;
     price?: { house?: number; unit?: number };
