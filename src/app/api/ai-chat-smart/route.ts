@@ -98,8 +98,10 @@ const capitalAvg = successResult.capitalAvg as { house?: number; unit?: number }
 // Only call generateRentalYieldSummary if we have at least house yield data
 const houseYield = typeof latestYield?.house === "number" ? latestYield.house : undefined;
 
+let summary: string;
+
 if (houseYield !== undefined) {
-  const summary = await generateRentalYieldSummary({
+  summary = await generateRentalYieldSummary({
     suburb: plan.suburb!,
     year: yearForSummary,
     userHouseYield: houseYield, // Now guaranteed to be number
@@ -111,11 +113,8 @@ if (houseYield !== undefined) {
   });
 } else {
   // Fallback summary when no house yield data is available
-  const summary = "Unable to generate yield analysis - insufficient house yield data available.";
+  summary = "Unable to generate yield analysis - insufficient house yield data available.";
 }
-
-// Make sure to declare summary outside the if block
-let summary: string;
 
 if (houseYield !== undefined) {
   summary = await generateRentalYieldSummary({
