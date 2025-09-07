@@ -543,10 +543,10 @@ async function findTopSuburbsByCriteria(): Promise<{
         
         return await Promise.race([analysisPromise, timeoutPromise]);
         
-      } catch (error) {
-        console.log(`${suburb} timed out or failed, skipping`);
-        return { suburb, score: 0, yieldData: null, crimeData: null };
-      }
+      } catch {
+  console.log(`${suburb} timed out or failed, skipping`);
+  return { suburb, score: 0, yieldData: null, crimeData: null };
+}
     });
     
     const results = await Promise.all(suburbPromises);

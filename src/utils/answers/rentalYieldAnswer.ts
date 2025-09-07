@@ -68,7 +68,7 @@ export async function answerRentalYield(suburb: string, lga: string) {
     if (houseYieldRecord && houseYieldRecord.rentalYield) {
       latestYieldHouse = houseYieldRecord.rentalYield;
       latestYieldYear = houseYieldRecord.year;
-      usePreCalculated = true;
+      //usePreCalculated = true;
       console.log('[DEBUG-RY1] Using pre-calculated house yield:', latestYieldHouse);
     }
     
