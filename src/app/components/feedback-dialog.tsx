@@ -126,7 +126,7 @@ export function FeedbackDialog({ triggerClassName = "" }: { triggerClassName?: s
           placeholder="Please include what you tried, what you expected, and what would make it better."
           className="w-full border rounded-md px-3 py-2 text-sm
            border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-100
-           transition-shadow"
+           transition-shadow placeholder:text-gray-400 placeholder:font-normal"
           maxLength={500}
         />
 <div className="text-xs text-gray-400 mt-1">
@@ -150,7 +150,7 @@ export function FeedbackDialog({ triggerClassName = "" }: { triggerClassName?: s
     if (emailError) setEmailError(""); // clear inline error while typing
   }}
   className={`w-full border rounded-md px-3 py-2 text-sm
-              focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-shadow
+              focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-shadow placeholder:text-gray-400 placeholder:font-normal
               ${emailError ? "border-red-500 focus:border-red-500 ring-1 ring-red-200" : "border-gray-300"}`}
 />
 
