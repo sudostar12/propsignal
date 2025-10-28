@@ -93,6 +93,7 @@ export function FeedbackDialog({ triggerClassName = "" }: { triggerClassName?: s
         </Button>
       </DialogTrigger>
       <DialogContent
+      onOpenAutoFocus={(e) => e.preventDefault()}  // 👈 prevents auto-focusing first input
   className="sm:max-w-md bg-white text-gray-800 shadow-[0_20px_60px_-15px_rgba(16,185,129,0.25)]
   border border-gray-200 rounded-xl backdrop-blur-sm p-6">
 
