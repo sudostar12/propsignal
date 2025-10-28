@@ -1,6 +1,6 @@
 import Link from "next/link"
-import { Button } from "@/app/components/ui/button"
 import Image from "next/image"
+import { FeedbackDialog } from "@/app/components/feedback-dialog";
 
 export function Header() {
   return (
@@ -30,12 +30,7 @@ export function Header() {
           </Link>
 
           {/* ✉️ Feedback Button */}
-          <Button
-           variant="outline"
-  className="px-3 py-2 rounded-[8px] border border-[#1E9464] text-[#1E9464] text-sm font-medium bg-white hover:bg-teal-50 transition-colors"
->
-            Submit your feedback
-          </Button>
+          <FeedbackDialog />
         </div>
       </div>
     </header>

@@ -50,6 +50,13 @@ h1, h2, h3 {
   padding-bottom: 2px;
 }
 
+/* === Dialog Overlay Fix: make modal backdrop darker === */
+[data-state="open"] .fixed.inset-0.bg-background\/80 {
+  background-color: rgba(0, 0, 0, 0.5) !important; /* 50% black overlay */
+  backdrop-filter: blur(4px); /* soft blur behind dialog */
+}
+
+
 /* Not using dark-mode colour theme yet so commented out. 
 @media (prefers-color-scheme: dark) {
   html {
