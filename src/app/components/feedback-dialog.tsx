@@ -93,7 +93,7 @@ export function FeedbackDialog({ triggerClassName = "" }: { triggerClassName?: s
         </Button>
       </DialogTrigger>
       <DialogContent
-  className="sm:max-w-md bg-white shadow-[0_20px_60px_-15px_rgba(16,185,129,0.25)]
+  className="sm:max-w-md bg-white text-gray-800 shadow-[0_20px_60px_-15px_rgba(16,185,129,0.25)]
   border border-gray-200 rounded-xl backdrop-blur-sm p-6">
 
 
@@ -164,7 +164,7 @@ export function FeedbackDialog({ triggerClassName = "" }: { triggerClassName?: s
 
 
         {/* Consent */}
-        <label className="flex items-center gap-2 mt-2 text-sm">
+        <label className="flex items-center gap-2 mt-2 text-sm text-gray-800">
           <input
             type="checkbox"
             checked={contactOk}
