@@ -86,8 +86,8 @@ export function NewsletterSection() {
             <button
               type="submit"
               disabled={status === "loading"}
-              className={`px-6 py-2 rounded-[10px] bg-gradient-to-r from-[#28C381] to-[#27A4C8] text-white text-m font-medium font-dm-sans leading-[19.6px] transition ${
-                status === "loading" ? "opacity-60 cursor-not-allowed" : "hover:opacity-90"
+              className={`px-6 py-2 rounded-[10px] bg-gradient-to-r from-[#28C381] to-[#27A4C8] text-white text-m font-medium font-dm-sans leading-[19.6px] transition-all duration-300 ${
+                status === "loading" ? "opacity-60 cursor-not-allowed" : "hover:opacity-90 hover:text-black"
               }`}
             >
               {status === "loading" ? "Subscribing..." : "Subscribe"}

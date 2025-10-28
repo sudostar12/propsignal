@@ -85,9 +85,11 @@ export function FeedbackDialog({ triggerClassName = "" }: { triggerClassName?: s
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className={`px-3 py-2 rounded-[8px] border border-[#1E9464] text-[#1E9464] text-sm font-medium bg-white hover:bg-teal-50 transition-colors ${triggerClassName}`}
-        >
-          Submit your feedback
+          className={`px-6 py-2 rounded-[10px] bg-gradient-to-r from-[#28C381] to-[#27A4C8]
+                text-white text-base font-medium font-dm-sans leading-[22px]
+                transition-all duration-300 hover:opacity-90 hover:text-black shadow-none border-0 ${triggerClassName}`}
+  >
+          Submit Feedback
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -180,12 +182,14 @@ export function FeedbackDialog({ triggerClassName = "" }: { triggerClassName?: s
           <Button
   onClick={submit}
   disabled={status === "loading"}
-  className={`bg-gradient-to-r from-[#28C381] to-[#27A4C8] text-white px-5
-              ${status === "loading" ? "opacity-60 cursor-not-allowed" : "hover:brightness-110"}
-              rounded-md`}
+  className={`px-4 py-2 rounded-[10px] bg-gradient-to-r from-[#28C381] to-[#27A4C8]
+              text-white text-sm font-medium font-dm-sans leading-[19.6px]
+              transition-all duration-300 hover:opacity-90
+              disabled:opacity-60 disabled:cursor-not-allowed border-0 shadow-none`}
 >
   {status === "loading" ? "Submitting..." : "Submit"}
 </Button>
+
 
         </div>
 

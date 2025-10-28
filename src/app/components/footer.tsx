@@ -3,39 +3,40 @@ import { ExternalLink } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="bg-transparent border-t border-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
+    <footer className="border-t border-gray-100 py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto text-center space-y-4">
 
         {/* ✅ VIC Status Message */}
-        <div className="text-center mb-6">
-          <p className="text-sm text-gray-500">
-            Now live in <span className="font-medium text-[#28C381]">VIC</span> &nbsp;|&nbsp; NSW & QLD coming soon.
-          </p>
+        <p className="text-sm text-gray-600">
+          Now live in{" "}
+          <span className="font-semibold text-[#28C381]">VIC</span>{" "}
+          <span className="text-gray-400">|</span>{" "}
+          NSW & QLD coming soon.
+        </p>
+
+        {/* ✅ Footer Links */}
+        <div className="flex justify-center space-x-8 text-sm">
+          <Link
+            href="/privacy"
+            className="text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            Privacy policy
+          </Link>
+          <Link
+            href="/terms"
+            className="text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            Terms and conditions
+          </Link>
         </div>
 
-        {/* Existing footer content */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-6 md:space-y-0">
-          <div>
-            <p className="text-gray-600 mb-2">Contact us at</p>
-            <Link
-              href="mailto:support@propsignal.com.au"
-              className="flex items-center space-x-2 text-gray-900 hover:text-teal-600 transition-colors"
-            >
-              <span>support@propsignal.com.au</span>
-              <ExternalLink className="w-4 h-4" />
-            </Link>
-          </div>
+        {/* Optional — small copyright note */}
+        {/* <p className="text-xs text-gray-400 mt-4">
+          © {new Date().getFullYear()} PropSignal. All rights reserved.
+        </p> */}
 
-          <div className="flex space-x-8">
-            <Link href="/privacy" className="text-gray-600 hover:text-gray-900 transition-colors">
-              Privacy policy
-            </Link>
-            <Link href="/terms" className="text-gray-600 hover:text-gray-900 transition-colors">
-              Terms and conditions
-            </Link>
-          </div>
-        </div>
       </div>
     </footer>
+
   )
 }
