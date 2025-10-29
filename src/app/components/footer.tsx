@@ -17,7 +17,7 @@ export function Footer() {
         {/* ✅ Footer Links */}
         <div className="flex justify-center space-x-8 text-sm">
           <Link
-            href="/privacy"
+            href="/privacy-policy"
             className="text-gray-500 hover:text-gray-800 transition-colors"
           >
             Privacy policy
