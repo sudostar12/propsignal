@@ -166,14 +166,28 @@ export default function PrivacyPolicyPage() {
         please use the <strong>Submit Feedback</strong> form located at the top of this page.
       </p>
 
-      <h2>12. Changes to This Policy</h2>
+<h2>12. Related Policies and Terms</h2>
+<p>
+  Your use of this website is also subject to our{" "}
+  <a href="/terms" className="text-blue-600 hover:underline">
+    Terms &amp; Conditions
+  </a>
+  , which outline the rules for using the PropSignal platform, permitted uses of
+  AI-generated insights, intellectual property rights, and limitations of
+  liability. We encourage you to review both documents together to understand
+  how PropSignal collects information and the terms under which our Services are
+  provided.
+</p>
+
+
+      <h2>13. Changes to This Privacy Policy</h2>
       <p>
         We may update this Privacy Policy periodically to reflect operational or
         legal changes. Your continued use
         of the website constitutes acceptance of any updated terms.
       </p>
-
-      <h2>13. Governing Law</h2>
+          
+      <h2>14. Governing Law</h2>
       <p>
         This Privacy Policy is governed by the laws of the Commonwealth of
         Australia and relevant State and Territory privacy legislation.
