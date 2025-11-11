@@ -39,26 +39,119 @@ export async function answerPriceGrowth(suburb: string, requestedYears: number =
   console.log("[DEBUG-PG3] House records count:", houseRecords.length);
   console.log("[DEBUG-PG3] Unit records count:", unitRecords.length);
 
-  const calcGrowth = (records: PriceRecord[]) => {
-    if (records.length < 2) return null;
-    const latest = records[0].medianPrice;
-    const earliest = records[records.length - 1].medianPrice;
-    if (!earliest || earliest === 0) return null;
-    return ((latest - earliest) / earliest) * 100;
+    // ✅ Robust growth calc with per-year aggregation (median), compatible with older TS targets
+  const calcGrowth = (records: PriceRecord[]): number | null => {
+    const cleaned = records
+      .filter(
+        (r) =>
+          typeof r.year === "number" &&
+          Number.isFinite(r.medianPrice) &&
+          r.medianPrice > 0
+      )
+      .sort((a, b) => a.year - b.year);
+
+    if (cleaned.length < 2) {
+      console.warn("[PG] Not enough valid records after cleaning:", cleaned);
+      return null;
+    }
+
+    // 1️⃣ Bucket by year
+    const buckets = new Map<number, number[]>();
+    for (const r of cleaned) {
+      if (!buckets.has(r.year)) buckets.set(r.year, []);
+      (buckets.get(r.year) as number[]).push(r.medianPrice);
+    }
+
+    // 2️⃣ Helper: compute median of an array
+    const median = (arr: number[]): number => {
+      const sorted = arr.slice().sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+    };
+
+    // 3️⃣ Convert map entries into a normal array first to avoid iteration error
+    const entriesArray = Array.from(buckets.entries());
+    const byYear = new Map<number, number>();
+    for (let i = 0; i < entriesArray.length; i++) {
+      const [year, prices] = entriesArray[i];
+      const med = median(prices);
+      byYear.set(year, med);
+      console.log(
+        `[PG] Year ${year}: aggregated median from ${prices.length} rows = ${med}`
+      );
+    }
+
+    // 4️⃣ Prefer explicit startYear → latestYear comparison
+    const startVal = byYear.get(startYear);
+    const endVal = byYear.get(latestYear);
+    const pct = (from: number, to: number) => ((to - from) / from) * 100;
+
+    if (startVal != null && endVal != null && startVal !== 0) {
+      const g = pct(startVal, endVal);
+      console.log(
+        `[PG] Using aggregated ${startYear}->${latestYear}: ${g.toFixed(
+          2
+        )}% (start=${startVal}, end=${endVal})`
+      );
+      return g;
+    }
+
+    // 5️⃣ Fallback to earliest → latest available year
+    const years = Array.from(byYear.keys()).sort((a, b) => a - b);
+    if (years.length < 2) {
+      console.warn("[PG] Not enough aggregated years to compute growth:", years);
+      return null;
+    }
+
+    const earliestYear = years[0];
+    const latestAvailYear = years[years.length - 1];
+    const earliest = byYear.get(earliestYear)!;
+    const latest = byYear.get(latestAvailYear)!;
+
+    if (!earliest || earliest === 0) {
+      console.warn(
+        `[PG] Earliest value invalid. year=${earliestYear}, value=${earliest}`
+      );
+      return null;
+    }
+
+    const g = pct(earliest, latest);
+    console.log(
+      `[PG] Fallback aggregated ${earliestYear}->${latestAvailYear}: ${g.toFixed(
+        2
+      )}% (earliest=${earliest}, latest=${latest})`
+    );
+    return g;
   };
+
+
+
 
   const houseGrowth = calcGrowth(houseRecords);
   const unitGrowth = calcGrowth(unitRecords);
 
-  const houseMsg = houseGrowth !== null
-    ? `🏠 House prices grew by ${houseGrowth.toFixed(1)}% from ${startYear} to ${latestYear}.`
-    : `Not enough data to compute growth for houses.`;
+   // Helper: format message with more natural phrasing
+  const formatGrowthMsg = (growth: number | null, label: string, emoji: string) => {
+    if (growth === null) return `Not enough data to compute ${label} price trend.`;
 
-  const unitMsg = unitGrowth !== null
-    ? `🏢 Unit prices grew by ${unitGrowth.toFixed(1)}% from ${startYear} to ${latestYear}.`
-    : `Not enough data to compute growth for units.`;
+    const absGrowth = Math.abs(growth).toFixed(1);
 
-  const finalMsg = `${houseMsg}\n\n${unitMsg}\n\n⚡ I currently provide trends for up to 3 years only. More in-depth historical insights will be available soon!`;
+    let direction: string;
+    if (growth > 0) direction = `edged up by ${absGrowth}%`;
+    else if (growth < 0) direction = `slipped by ${absGrowth}%`;
+    else direction = `remained stable`;
+
+    const rangeText = `${startYear} and ${latestYear}`;
+
+    return `${emoji} ${label.charAt(0).toUpperCase() + label.slice(1)} prices ${direction} between ${rangeText}.`;
+  };
+
+  const houseMsg = formatGrowthMsg(houseGrowth, "house", "🏠");
+  const unitMsg  = formatGrowthMsg(unitGrowth,  "unit",  "🏢");
+
+  const finalMsg = `${houseMsg}\n\n${unitMsg}\n\n⚡ Currently showing trends for the past 3 years. More detailed historical insights are coming soon.`;
 
   return finalMsg;
 }
