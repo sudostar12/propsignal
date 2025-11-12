@@ -90,7 +90,7 @@ if (topic === 'compare' && targetAreas.length > 1) {
   console.log('[DEBUG route.ts] Multi-suburb comparison requested:', targetAreas);
   // In compare flow, do not set area here
 } else {
-  area = suburb1;
+  //area = suburb1;
   console.log('[DEBUG route.ts] Single suburb context:', area);
 }
 
