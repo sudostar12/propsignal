@@ -76,15 +76,24 @@ if (useSmartSystem === true) {
     let topic = questionAnalysis.topic;
     //const targetAreas = questionAnalysis.targetAreas || [];
 let area: string | undefined = undefined;
-const suburb1 = questionAnalysis.targetAreas?.[0] || '';
-const suburb2 = questionAnalysis.targetAreas?.[1] || '';
 
+// ✅ Safely normalize targetAreas (handles undefined + legacy targetArea)
+const targetAreas: string[] = Array.isArray(questionAnalysis.targetAreas)
+  ? questionAnalysis.targetAreas
+  : (questionAnalysis.targetArea ? [questionAnalysis.targetArea] : []);
 
+// ✅ Extract suburbs safely
+const suburb1 = targetAreas[0] || '';
+const suburb2 = targetAreas[1] || '';
 
-if (topic === 'compare' && questionAnalysis.targetAreas.length > 1) {
-  console.log('[DEBUG route.ts] Multi-suburb comparison requested:', questionAnalysis.targetAreas);
+if (topic === 'compare' && targetAreas.length > 1) {
+  console.log('[DEBUG route.ts] Multi-suburb comparison requested:', targetAreas);
   // In compare flow, do not set area here
+} else {
+  area = suburb1;
+  console.log('[DEBUG route.ts] Single suburb context:', area);
 }
+
 
 
     // ============================
@@ -354,7 +363,7 @@ In the meantime, here are a few things you can ask about ${area}:
 
 Just type one of these, or ask about anything else you'd like to explore!`;
 } else if (topic === 'compare') {
-  finalReply = `Thanks for your question! Our suburb comparison feature is currently being developed — it will let you easily compare ${questionAnalysis.targetAreas.join (" and ")} on price trends, rental yields, and more.
+  finalReply = `Thanks for your question! Our suburb comparison feature is currently being developed — it will let you easily compare on price trends, rental yields, and more.
 
 While we're building this, you can still explore detailed insights on individual suburbs, one at a time. Here are some example prompts you can try:
 • "What is the median price in ${suburb1}?"
