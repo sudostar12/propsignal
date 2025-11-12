@@ -119,26 +119,28 @@ Always return valid JSON only.
   });
 
   // Parse safely
-  let parsed: any = {};
+  let parsed: Record<string, unknown> = {};
   try {
-    parsed = JSON.parse(resp.choices?.[0]?.message?.content ?? "{}");
+    parsed = JSON.parse(resp.choices?.[0]?.message?.content ?? "{}") as Record<string, unknown>;
   } catch (e) {
     console.error("[ERROR] Failed to parse analyzer JSON:", e);
     parsed = {};
   }
 
   // Normalize & validate
-  let topicRaw = (parsed.topic ?? "").toString().toLowerCase().trim();
-  // Normalize synonyms to your allowed set
+  let topicRaw = String(parsed.topic ?? "").toLowerCase().trim();
   topicRaw = NORMALIZE[topicRaw] ?? topicRaw;
   if (!ALLOWED_TOPICS.includes(topicRaw as AllowedTopic)) {
     topicRaw = "general";
   }
 
-  // Ensure array
-  let targetAreas: string[] = Array.isArray(parsed.targetAreas)
-    ? parsed.targetAreas.map((s: any) => (s ?? "").toString().trim()).filter(Boolean)
+  // Ensure array and sanitize items
+  const targetAreas = Array.isArray(parsed.targetAreas)
+    ? (parsed.targetAreas as unknown[])
+        .map((s) => String(s ?? "").trim())
+        .filter((s) => Boolean(s))
     : [];
+
 
   const compare: boolean = Boolean(parsed.compare);
   const years: number | undefined =
