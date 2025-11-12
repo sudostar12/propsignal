@@ -90,8 +90,8 @@ if (topic === 'compare' && targetAreas.length > 1) {
   console.log('[DEBUG route.ts] Multi-suburb comparison requested:', targetAreas);
   // In compare flow, do not set area here
 } else {
-  //area = suburb1;
-  console.log('[DEBUG route.ts] Single suburb context:', area);
+  
+  console.log('[DEBUG route.ts] Single suburb context (AI hint only):', suburb1);
 }
 
 
@@ -158,8 +158,20 @@ else {
     }
   }
 
-    if (!area && topic !== "general") {
+    if (!area) {
     const suburbDetection = await detectSuburb(userInput);
+
+    if (!suburbDetection.possible_suburb && !suburbDetection.needsClarification) {
+  console.log('[DEBUG route.ts] No suburb detected in current message - clearing old suburb context');
+  updateContext({ 
+    suburb: undefined, 
+    lga: undefined, 
+    state: undefined, 
+    nearbySuburbs: [],
+    clarificationOptions: [],
+    pendingTopic: undefined
+  });
+}
 
     if (suburbDetection.needsClarification && suburbDetection.multipleMatches) {
       console.log('[DEBUG route.ts] Multiple matches found, storing clarification options in context');
@@ -259,16 +271,36 @@ if (context.pendingTopic) {
 
 const currentContext = getContext();
 
+// ==============================================================
+// 🔍 DEBUG: State Check Diagnostics
+// ==============================================================
+const debugContext = getContext(); // Store once for debug logging
+console.log('[DEBUG route.ts] ===== STATE CHECK DIAGNOSTICS =====');
+console.log('[DEBUG route.ts] About to check non-VIC state...');
+console.log('[DEBUG route.ts] getContext() returns:', JSON.stringify(debugContext, null, 2));
+console.log('[DEBUG route.ts] context.state value:', debugContext?.state);
+console.log('[DEBUG route.ts] context.state type:', typeof debugContext?.state);
+console.log('[DEBUG route.ts] Will trigger coverage notice?', debugContext?.state && debugContext.state.trim() !== '' && debugContext.state.toUpperCase() !== "VIC" && debugContext.state.toUpperCase() !== "VICTORIA");
+console.log('[DEBUG route.ts] ==========================================');
+// ==============================================================
 
 // 🚧 Check if the suburb is outside of VIC - 26/07 - to be deleted once other state coverage is added.
 
 
-if (context?.state && context.state.toUpperCase() !== "VIC") {
-  console.log(`[INFO route.ts] Non-VIC suburb detected (${context.state}) — returning coverage notice.`);
-//let suggestions: string[] = [];
-  finalReply = `🚧 **Coverage Notice**\n\nI currently only cover **Victorian suburbs**. Expansion to other states like **${context.state}** is underway.\n\nWant early access in your area? Let me know!`;
+// ✅ Use fresh context here, not the stale 'context' variable from earlier
+const freshContext = getContext();
 
-  context.clarificationOptions = [];
+// ✅ Improved state check with multiple safeguards
+if (freshContext?.state && 
+    freshContext.state.trim() !== '' && 
+    freshContext.state.toUpperCase() !== "VIC" && 
+    freshContext.state.toUpperCase() !== "VICTORIA") {
+  console.log(`[INFO route.ts] Non-VIC suburb detected (${freshContext.state}) — returning coverage notice.`);
+//let suggestions: string[] = [];
+  finalReply = `🚧 **Coverage Notice**\n\nI currently only cover **Victorian suburbs**. Expansion to other states like **${freshContext.state}** is underway.\n\n🔗 [Subscribe](https://www.propsignal.com.au/)\n` +
+  `to get notified when insights for your area become available.`;
+
+  freshContext.clarificationOptions = [];
   //suggestions = [];
 
   // ✅ Supabase logging for feedback tracking
@@ -281,7 +313,7 @@ if (context?.state && context.state.toUpperCase() !== "VIC") {
       suburb: area,
       isVague,
       lga,
-      state: context.state
+      state: freshContext.state
     })
     .select('uuid');
 
@@ -374,8 +406,24 @@ While we're building this, you can still explore detailed insights on individual
 
 Feel free to ask about any of these, or anything else you'd like to explore!`;
 
-} else {
+
+  } else {
   console.log('[DEBUG route.ts] Preparing AI general response.');
+  
+  // ✅ CRITICAL FIX: Clear old suburb context when answering general questions
+  // This prevents previous non-VIC suburbs from persisting
+  if (!area) {
+    console.log('[DEBUG route.ts] No suburb in current question - clearing old suburb context');
+    updateContext({ 
+      suburb: undefined, 
+      lga: undefined, 
+      state: undefined, 
+      nearbySuburbs: [],
+      clarificationOptions: [],
+      pendingTopic: undefined
+    });
+  }
+
   finalReply = await generateGeneralReply(messages, topic);
   isVague = true;
 }
