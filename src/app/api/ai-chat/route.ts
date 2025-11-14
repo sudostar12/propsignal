@@ -437,27 +437,42 @@ const topicHandlers: Record<string, () => Promise<string>> = {
 if (area && topicHandlers[topic]) {
   finalReply = await topicHandlers[topic]();
 } else if (topic === 'profile') {
-  finalReply = `Great question! Our full suburb profile feature is currently being developed — it will include details like lifestyle insights, local amenities, and growth trends to help you make informed decisions.
+  // Handle multi-suburb profile requests
+  if (targetAreas.length > 1) {
+    const suburb1 = targetAreas[0];
+    const suburb2 = targetAreas[1];
+    
+    finalReply = `You're interested in ${suburb1} and ${suburb2}! 
 
-In the meantime, here are a few things you can ask about ${area}:
-• "What is the median price in ${area}?"
-• "Tell me the rental yield for ${area}."
-• "Show me price growth trends in ${area}."
-• "Are there any new projects in ${area}?"
-• "What are the crime stats for ${area}?"
+While our side-by-side comparison feature is in development, I can give you detailed insights on each suburb individually.
 
-Just type one of these, or ask about anything else you'd like to explore!`;
-} else if (topic === 'compare') {
-  finalReply = `Thanks for your question! Our suburb comparison feature is currently being developed — it will let you easily compare on price trends, rental yields, and more.
+**Try asking:**
+- "What is the median price in ${suburb1}?"
+- "What are the crime stats for ${suburb2}?"
+- "Show me price growth in ${suburb1}"
+- "Tell me the rental yield for ${suburb2}"
 
-While we're building this, you can still explore detailed insights on individual suburbs, one at a time. Here are some example prompts you can try:
-• "What is the median price in ${suburb1}?"
-• "Tell me the rental yield for ${suburb2}."
-• "Show me price growth trends in ${suburb2}."
-• "Are there any new projects in ${suburb2}?"
-• "What are the crime stats for ${suburb1}?"
+Which suburb would you like to explore first?`;
+  } else {
+    // Single suburb profile request
+    const suburbName = area || (targetAreas.length > 0 ? targetAreas[0] : 'that area');
+    
+    finalReply = `I'd love to give you a comprehensive profile of ${suburbName}!
 
-Feel free to ask about any of these, or anything else you'd like to explore!`;
+Right now, I can provide you with detailed insights across these key areas:
+
+📊 **Investment Metrics**
+- Median prices and trends
+- Rental yields and returns  
+- Historical price growth
+
+🏘️ **Local Market Data**
+- New development projects
+- Crime and safety statistics
+
+**What would you like to explore first?** Just ask about any of these topics for ${suburbName}!`;
+  }
+
 
 
   } else {

@@ -97,13 +97,17 @@ export async function planFiltersOnly(
 export type QueryPlan = {
   actions: QueryAction[];
   suburb?: string;
-  state?: string;                  // VIC/NSW/QLD…
-  propertyTypes?: PT[];            // ["house"] | ["unit"] | ["house","unit"]
-  bedroom?: number | null;         // if user asked a bedroom (e.g., 3BR)
+  state?: string;
+  propertyTypes?: PT[];
+  bedroom?: number | null;
   bedrooms?: number[] | null;
   years?: { lastN?: number; from?: number; to?: number };
   compare?: { nearby?: boolean; suburbs?: string[] };
   wantMarkdown?: boolean;
+  
+  // ✅ NEW: Support for all query types
+  intent?: 'rental_yield' | 'crime_stats' | 'median_price' | 'price_growth' | 'new_projects' | 'suburb_profile' | 'demographics';
+  dataNeeded?: string[]; // e.g., ['crime', 'price', 'yield', 'demographics']
 };
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -215,7 +219,56 @@ if (Array.isArray(args.actions) &&
   args.actions.push("price_rent_latest");
 }
 
-  if (!args.propertyTypes?.length) args.propertyTypes = ["house", "unit"];
+if (!args.propertyTypes?.length) args.propertyTypes = ["house", "unit"];
   if (!args.years) args.years = { lastN: 3 };
+  
+  // ✅ NEW: If user is asking about non-yield topics, enhance the plan
+  const userInput = messages[messages.length - 1]?.content || '';
+  const lowerInput = userInput.toLowerCase();
+  
+  // Detect if this is NOT a rental yield question
+  const isNonYieldQuery = 
+    lowerInput.includes('crime') || 
+    lowerInput.includes('safe') ||
+    lowerInput.includes('growth') ||
+    lowerInput.includes('project') ||
+    lowerInput.includes('development') ||
+    lowerInput.includes('demographic') ||
+    lowerInput.includes('population') ||
+    (!lowerInput.includes('yield') && !lowerInput.includes('rent') && lowerInput.includes('price'));
+  
+  if (isNonYieldQuery) {
+    console.log('[planner] Non-yield query detected, using smartQuestionAnalyzer');
+    
+    // Import and use your existing smart analyzer
+    const { analyzeUserQuestionSmart } = await import('./smartQuestionAnalyzer');
+    const smartAnalysis = await analyzeUserQuestionSmart(userInput);
+    
+    // Enrich the plan with smart analysis
+    args.intent = mapTopicToIntent(smartAnalysis.topic);
+    args.dataNeeded = smartAnalysis.dataRequirements;
+    
+    console.log('[planner] Enhanced plan with smart analysis:', { intent: args.intent, dataNeeded: args.dataNeeded });
+  } else {
+    // Default to rental yield intent
+    args.intent = 'rental_yield';
+    args.dataNeeded = ['rentals', 'prices'];
+  }
+  
   return args as QueryPlan;
+}
+
+// ✅ NEW: Helper function to map topic to intent
+function mapTopicToIntent(topic: string): QueryPlan['intent'] {
+  const mapping: Record<string, QueryPlan['intent']> = {
+    'crime': 'crime_stats',
+    'price': 'median_price',
+    'price_growth': 'price_growth',
+    'yield': 'rental_yield',
+    'projects': 'new_projects',
+    'profile': 'suburb_profile',
+    'demographics': 'demographics'
+  };
+  
+  return mapping[topic] || 'suburb_profile';
 }

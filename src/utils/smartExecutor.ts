@@ -131,3 +131,65 @@ if (plan.actions.includes("yield_latest")) {
 
   return out;
 }
+
+// ✅ NEW: Enhanced executor that handles all data types
+export async function executeEnhancedPlan(plan: QueryPlan): Promise<Record<string, unknown> | { error: string }> {
+  console.log("[enhanced-executor] plan:", JSON.stringify(plan));
+  
+  const suburb = plan.suburb;
+  const state = plan.state || 'VIC';
+  
+  if (!suburb) {
+    return { error: "No suburb detected. Please specify a suburb." };
+  }
+
+  // If this is a rental yield query, use the original executor
+  if (plan.intent === 'rental_yield' || !plan.intent) {
+    console.log('[enhanced-executor] Using original rental yield executor');
+    return executePlan(plan);
+  }
+
+  // For other intents, fetch appropriate data
+  console.log('[enhanced-executor] Fetching data for intent:', plan.intent);
+  
+  const out: Record<string, unknown> = { suburb, state, plan };
+  
+  try {
+    // Import data orchestrator
+    const { fetchSmartRequiredData } = await import('./smartDataOrchestrator');
+    const { analyzeUserQuestionSmart } = await import('./smartQuestionAnalyzer');
+    
+    // Create analysis object for data orchestrator
+    const analysis = {
+      topic: plan.intent || 'profile',
+      targetAreas: [suburb],
+      compare: false,
+      years: plan.years?.lastN,
+      state: state,
+      dataRequirements: plan.dataNeeded || [],
+      analysisComplexity: 'simple' as const,
+      responseType: 'analytical' as const,
+      contextualFactors: [],
+      confidence: 85,
+      analysisType: 'single_suburb' as const
+    };
+    
+    // Fetch data using your existing orchestrator
+    const fetchedData = await fetchSmartRequiredData(analysis);
+    
+    console.log('[enhanced-executor] Fetched data sources:', fetchedData.metadata.dataSourcesUsed);
+    
+    // Return the fetched data
+    return {
+      ...out,
+      fetchedData: fetchedData.data,
+      metadata: fetchedData.metadata
+    };
+    
+  } catch (error) {
+    console.error('[enhanced-executor] Error fetching data:', error);
+    return { 
+      error: `Failed to fetch data: ${error instanceof Error ? error.message : String(error)}` 
+    };
+  }
+}

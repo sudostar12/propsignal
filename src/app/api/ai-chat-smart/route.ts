@@ -46,6 +46,9 @@ export async function POST(req: Request) {
       useSmartSystem,
     });
 
+    // Import executors
+    const { executeEnhancedPlan } = await import('@/utils/smartExecutor');
+
     // 1) PLAN — build a typed QueryPlan from the conversation
     const plan = await planUserQuery(messages);
     console.log("[ai-chat-smart] plan", plan);
@@ -60,99 +63,101 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2) EXECUTE — run the plan via your fetchRentalData helpers (no raw SQL)
-    const result = await executePlan(plan);
+    // 2) EXECUTE — run the enhanced plan
+    const result = await executeEnhancedPlan(plan);
+    
     if (result?.error) {
       console.warn("[ai-chat-smart] execution error", result.error);
       return NextResponse.json({
         reply: `Sorry, I couldn't process that. ${result.error}`,
         uuid: safeUUID(),
-        suggestions: ["Specify a suburb and state, e.g., 'Doncaster VIC 3108'"],
+        suggestions: ["Specify a suburb and state, e.g., 'Doncaster VIC'"],
         showCopy: true,
         allowFeedback: true,
         clarificationNeeded: true,
         smartMetadata: { plan, result },
       });
     }
-// Type assertion after confirming no error
-const successResult = result as Record<string, unknown>;
 
-// 3) SUMMARY — reuse your existing OpenAI summary builder
-const yearForSummary =
-  (successResult.latestYieldYear as number | null) ??
-  ((successResult.latestPR as { year?: number })?.year) ??
-  new Date().getFullYear();
+    // 3) GENERATE RESPONSE based on intent
+    let finalReply: string;
+    
+    if (plan.intent === 'rental_yield' || !plan.intent) {
+      // Use original rental yield response generation
+      console.log('[ai-chat-smart] Generating rental yield response');
+      
+      const successResult = result as Record<string, unknown>;
+      
+      const yearForSummary =
+        (successResult.latestYieldYear as number | null) ??
+        ((successResult.latestPR as { year?: number })?.year) ??
+        new Date().getFullYear();
 
-const nearbyInsights = ((successResult.nearbyCompare as { rows?: unknown[] })?.rows || []).map((r: unknown) => {
-  const row = r as { suburb: string; house?: number; unit?: number };
-  return {
-    suburb: row.suburb,
-    houseYield: typeof row.house === "number" ? row.house : undefined,
-    unitYield: typeof row.unit === "number" ? row.unit : undefined,
-  };
-});
+      const nearbyInsights = ((successResult.nearbyCompare as { rows?: unknown[] })?.rows || []).map((r: unknown) => {
+        const row = r as { suburb: string; house?: number; unit?: number };
+        return {
+          suburb: row.suburb,
+          houseYield: typeof row.house === "number" ? row.house : undefined,
+          unitYield: typeof row.unit === "number" ? row.unit : undefined,
+        };
+      });
 
-const latestYield = successResult.latestYield as { house?: number; unit?: number } | undefined;
-const capitalAvg = successResult.capitalAvg as { house?: number; unit?: number } | undefined;
+      const latestYield = successResult.latestYield as { house?: number; unit?: number } | undefined;
+      const capitalAvg = successResult.capitalAvg as { house?: number; unit?: number } | undefined;
+      const houseYield = typeof latestYield?.house === "number" ? latestYield.house : undefined;
 
-// Only call generateRentalYieldSummary if we have at least house yield data
-const houseYield = typeof latestYield?.house === "number" ? latestYield.house : undefined;
+      let summary: string;
+      if (houseYield !== undefined) {
+        summary = await generateRentalYieldSummary({
+          suburb: plan.suburb!,
+          year: yearForSummary,
+          userHouseYield: houseYield,
+          userUnitYield: typeof latestYield?.unit === "number" ? latestYield.unit : undefined,
+          nearbyInsights,
+          state: plan.state || "VIC",
+          stateAvgHouseYield: typeof capitalAvg?.house === "number" ? capitalAvg.house : undefined,
+          stateAvgUnitYield: typeof capitalAvg?.unit === "number" ? capitalAvg.unit : undefined,
+        });
+      } else {
+        summary = "Unable to generate yield analysis - insufficient house yield data available.";
+      }
 
-let summary: string;
-
-if (houseYield !== undefined) {
-  summary = await generateRentalYieldSummary({
-    suburb: plan.suburb!,
-    year: yearForSummary,
-    userHouseYield: houseYield, // Now guaranteed to be number
-    userUnitYield: typeof latestYield?.unit === "number" ? latestYield.unit : undefined,
-    nearbyInsights,
-    state: plan.state || "VIC",
-    stateAvgHouseYield: typeof capitalAvg?.house === "number" ? capitalAvg.house : undefined,
-    stateAvgUnitYield: typeof capitalAvg?.unit === "number" ? capitalAvg.unit : undefined,
-  });
-} else {
-  // Fallback summary when no house yield data is available
-  summary = "Unable to generate yield analysis - insufficient house yield data available.";
-}
-
-if (houseYield !== undefined) {
-  summary = await generateRentalYieldSummary({
-    suburb: plan.suburb!,
-    year: yearForSummary,
-    userHouseYield: houseYield,
-    userUnitYield: typeof latestYield?.unit === "number" ? latestYield.unit : undefined,
-    nearbyInsights,
-    state: plan.state || "VIC",
-    stateAvgHouseYield: typeof capitalAvg?.house === "number" ? capitalAvg.house : undefined,
-    stateAvgUnitYield: typeof capitalAvg?.unit === "number" ? capitalAvg.unit : undefined,
-  });
-} else {
-  summary = "Unable to generate yield analysis - insufficient house yield data available.";
-}
-
-// 4) FORMAT — produce your standard markdown body
-const markdown = `${formatMarkdownReply(plan.suburb!, successResult as FormatterResult)}
+      finalReply = `${formatMarkdownReply(plan.suburb!, successResult as FormatterResult)}
  
 🧭 **Summary**
 ${summary}
 
 💡 Data uses suburb-level rollups (bedroom = null) plus bedroom snapshots when requested.`;
 
-    // 5) RESPOND — exact shape your UI expects
+    } else {
+      // Use AI to generate response for non-yield queries
+      console.log('[ai-chat-smart] Generating AI response for intent:', plan.intent);
+      
+      const { generateSmartResponse } = await import('@/utils/smartDataOrchestrator');
+      const { analyzeUserQuestionSmart } = await import('@/utils/smartQuestionAnalyzer');
+      
+      const userInput = messages[messages.length - 1]?.content || '';
+      const analysis = await analyzeUserQuestionSmart(userInput);
+      
+      const fetchedData = {
+        data: (result as any).fetchedData || {},
+        metadata: (result as any).metadata || { fetchTimeMs: 0, dataSourcesUsed: [], targetAreas: [plan.suburb!], analysisType: 'simple' }
+      };
+      
+      finalReply = await generateSmartResponse(userInput, analysis, fetchedData);
+    }
+
+    // 4) RESPOND
     return NextResponse.json({
-      reply: markdown,
+      reply: finalReply,
       uuid: safeUUID(),
-      suggestions: [
-        "Show 5-year trends for both types",
-        "Compare with 2 nearby suburbs",
-        "Give 4BR vs 3BR house snapshot",
-      ],
+      suggestions: generateSuggestionsForIntent(plan.intent, plan.suburb),
       showCopy: true,
       allowFeedback: true,
       clarificationNeeded: false,
-      smartMetadata: { plan, result },
+      smartMetadata: { plan, intent: plan.intent },
     });
+    
   } catch (err: unknown) {
     console.error("[ai-chat-smart] fatal error", err);
     return NextResponse.json(
@@ -168,6 +173,41 @@ ${summary}
       { status: 500 }
     );
   }
+}
+
+// Helper: Generate appropriate suggestions based on intent
+function generateSuggestionsForIntent(intent: string | undefined, suburb: string | undefined): string[] {
+  if (!suburb) return ["Try asking about a specific suburb"];
+  
+  const suggestions: Record<string, string[]> = {
+    'rental_yield': [
+      "Show 5-year trends for both types",
+      "Compare with 2 nearby suburbs",
+      "Give 4BR vs 3BR house snapshot",
+    ],
+    'crime_stats': [
+      `What's the median price in ${suburb}?`,
+      `Price growth trends in ${suburb}`,
+      `New projects in ${suburb}`,
+    ],
+    'median_price': [
+      `Crime stats for ${suburb}`,
+      `Rental yield in ${suburb}`,
+      `Price growth in ${suburb}`,
+    ],
+    'price_growth': [
+      `Crime stats for ${suburb}`,
+      `Median price in ${suburb}`,
+      `Rental yield in ${suburb}`,
+    ],
+    'new_projects': [
+      `Crime stats for ${suburb}`,
+      `Median price in ${suburb}`,
+      `Price growth in ${suburb}`,
+    ]
+  };
+  
+  return suggestions[intent || 'rental_yield'] || suggestions['crime_stats'];
 }
 
 export async function GET() {
