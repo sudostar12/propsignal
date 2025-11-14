@@ -27,34 +27,134 @@ export async function POST(req: NextRequest) {
     // Smart system toggle and delegation
 const body = await req.json();
 const { messages, useSmartSystem } = body;
+// Extract user input early (needed for both smart and original systems)
+const userInput = messages?.[messages.length - 1]?.content || '';
+console.log('[DEBUG route.ts] User input:', userInput);
 
-// If smart system is requested, delegate to smart route
+// If smart system is requested, use smart logic directly
 if (useSmartSystem === true) {
-  console.log('[DEBUG route.ts] Delegating to smart system');
+  console.log('[DEBUG route.ts] Using smart system');
   
   try {
-    // Forward to smart route  
-    const smartResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai-chat-smart`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ messages, useSmartSystem: true }),
-    });
+    // Import smart system functions directly (no HTTP fetch needed)
+    const { planUserQuery } = await import('@/utils/smartPlanner');
+    const { executeEnhancedPlan } = await import('@/utils/smartExecutor');
+    const { generateRentalYieldSummary } = await import('@/utils/fetchRentalData');
+    const { formatMarkdownReply } = await import('@/utils/responseFormatter');
     
-    if (!smartResponse.ok) {
-      throw new Error(`Smart system failed with status: ${smartResponse.status}`);
+    // Plan the query
+    const plan = await planUserQuery(messages);
+    console.log('[DEBUG route.ts] Smart plan:', plan);
+    
+    if (!plan.suburb) {
+      // Fall back to original system if no suburb detected
+      console.log('[DEBUG route.ts] No suburb in plan, falling back to original system');
+    } else {
+      // Execute the plan
+      const result = await executeEnhancedPlan(plan);
+      
+      if (result.error) {
+        console.error('[DEBUG route.ts] Smart execution error:', result.error);
+        // Fall back to original system
+      } else {
+        // Generate response based on intent
+        let smartReply: string;
+        
+        if (plan.intent === 'rental_yield' || !plan.intent) {
+          // Use rental yield response generation
+          const successResult = result as Record<string, unknown>;
+          
+          const yearForSummary =
+            (successResult.latestYieldYear as number | null) ??
+            ((successResult.latestPR as { year?: number })?.year) ??
+            new Date().getFullYear();
+
+          const nearbyInsights = ((successResult.nearbyCompare as { rows?: unknown[] })?.rows || []).map((r: unknown) => {
+            const row = r as { suburb: string; house?: number; unit?: number };
+            return {
+              suburb: row.suburb,
+              houseYield: typeof row.house === "number" ? row.house : undefined,
+              unitYield: typeof row.unit === "number" ? row.unit : undefined,
+            };
+          });
+
+          const latestYield = successResult.latestYield as { house?: number; unit?: number } | undefined;
+          const capitalAvg = successResult.capitalAvg as { house?: number; unit?: number } | undefined;
+          const houseYield = typeof latestYield?.house === "number" ? latestYield.house : undefined;
+
+          let summary: string;
+          if (houseYield !== undefined) {
+            summary = await generateRentalYieldSummary({
+              suburb: plan.suburb,
+              year: yearForSummary,
+              userHouseYield: houseYield,
+              userUnitYield: typeof latestYield?.unit === "number" ? latestYield.unit : undefined,
+              nearbyInsights,
+              state: plan.state || "VIC",
+              stateAvgHouseYield: typeof capitalAvg?.house === "number" ? capitalAvg.house : undefined,
+              stateAvgUnitYield: typeof capitalAvg?.unit === "number" ? capitalAvg.unit : undefined,
+            });
+          } else {
+            summary = "Unable to generate yield analysis - insufficient house yield data available.";
+          }
+
+          smartReply = `${formatMarkdownReply(plan.suburb, successResult as never)}
+ 
+🧭 **Summary**
+${summary}
+
+💡 Data uses suburb-level rollups (bedroom = null) plus bedroom snapshots when requested.`;
+
+        } else {
+          // Use AI to generate response for non-yield queries
+          const { generateSmartResponse } = await import('@/utils/smartDataOrchestrator');
+          const { analyzeUserQuestionSmart } = await import('@/utils/smartQuestionAnalyzer');
+          
+          const userInputText = messages[messages.length - 1]?.content || '';
+          const analysis = await analyzeUserQuestionSmart(userInputText);
+          
+          const resultData = result as Record<string, unknown>;
+          const fetchedData = {
+            data: (resultData.fetchedData || {}) as Record<string, unknown>,
+            metadata: {
+              fetchTimeMs: 0,
+              dataSourcesUsed: [] as string[],
+              targetAreas: [plan.suburb] as string[],
+              analysisType: 'simple' as 'simple' | 'moderate' | 'complex'
+            }
+          };
+          
+          smartReply = await generateSmartResponse(userInputText, analysis, fetchedData);
+        }
+        
+        // Log to database
+        const { data: smartLogData } = await supabase
+          .from('log_ai_chat')
+          .insert({
+            userInput,
+            AIResponse: smartReply,
+            intent: plan.intent || 'smart_system',
+            suburb: plan.suburb,
+            state: plan.state,
+            isVague: false
+          })
+          .select('uuid');
+        
+        // Return smart response
+        return NextResponse.json({
+          reply: smartReply,
+          uuid: smartLogData?.[0]?.uuid || null,
+          suggestions: getSuggestionsForTopic(plan.intent || 'general'),
+          showCopy: true,
+          allowFeedback: true,
+          clarificationNeeded: false,
+          fromSmartSystem: true,
+          smartMetadata: { plan, intent: plan.intent }
+        });
+      }
     }
-    
-    const smartData = await smartResponse.json();
-    
-    // Add a flag to indicate this came from smart system
-    return NextResponse.json({
-      ...smartData,
-      fromSmartSystem: true
-    });
   } catch (error) {
-    console.error('[ERROR route.ts] Smart system delegation failed:', error);
+    console.error('[ERROR route.ts] Smart system error:', error);
     // Fall back to original system
     console.log('[DEBUG route.ts] Falling back to original system due to smart system error');
   }
@@ -62,8 +162,8 @@ if (useSmartSystem === true) {
 
 // Continue with existing logic...
 
-    const userInput = messages?.[messages.length - 1]?.content || '';
-    console.log('[DEBUG route.ts] User input:', userInput);
+   // const userInput = messages?.[messages.length - 1]?.content || '';
+    //console.log('[DEBUG route.ts] User input:', userInput);
 
     // STEP 1️⃣ — Analyze user question
     const questionAnalysis = await analyzeUserQuestion(userInput);
