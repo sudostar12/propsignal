@@ -85,7 +85,7 @@ const targetAreas: string[] = Array.isArray(questionAnalysis.targetAreas)
 
 // ✅ Extract suburbs safely
 const suburb1 = targetAreas[0] || '';
-const suburb2 = targetAreas[1] || '';
+//const suburb2 = targetAreas[1] || '';
 
 if (topic === 'compare' && targetAreas.length > 1) {
   console.log('[DEBUG route.ts] Multi-suburb comparison requested:', targetAreas);

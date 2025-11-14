@@ -22,7 +22,7 @@ interface ConversationIntent {
  */
 export async function analyzeConversationFlow(
   userInput: string,
-  conversationHistory: any[]
+  conversationHistory: Array<{ role: string; content: string }>
 ): Promise<ConversationIntent> {
   
   console.log('[Smart Conversation] Analyzing conversation flow...');
@@ -39,7 +39,7 @@ export async function analyzeConversationFlow(
 Current Context:
 - Pending clarification: ${context.clarificationOptions && context.clarificationOptions.length > 0 ? 'YES' : 'NO'}
 - Last suburb discussed: ${context.suburb || 'none'}
-- Clarification options: ${context.clarificationOptions?.map((o: any) => o.suburb).join(', ') || 'none'}
+- Clarification options: ${context.clarificationOptions?.map((o) => o.suburb).join(', ') || 'none'}
 
 Last assistant message: "${lastAssistantMessage}"
 
@@ -138,7 +138,7 @@ export async function handleConversationIntent(
     
     // Try to match their response
     const userLower = userInput.toLowerCase();
-    const match = context.clarificationOptions.find((opt: any) =>
+    const match = context.clarificationOptions.find((opt) =>
       userLower.includes(opt.state?.toLowerCase()) ||
       userLower.includes(opt.suburb?.toLowerCase()) ||
       userLower.includes(opt.lga?.toLowerCase())
@@ -161,7 +161,7 @@ export async function handleConversationIntent(
     } else {
       // Couldn't match
       const options = context.clarificationOptions
-        .map((o: any) => `${o.suburb} (${o.lga}, ${o.state})`)
+        .map((o) => `${o.suburb} (${o.lga}, ${o.state})`)
         .join('\n• ');
       
       return {

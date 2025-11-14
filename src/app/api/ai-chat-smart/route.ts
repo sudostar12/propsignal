@@ -18,7 +18,7 @@
 
 import { NextResponse } from "next/server";
 import { planUserQuery } from "@/utils/smartPlanner";
-import { executePlan } from "@/utils/smartExecutor";
+//import { executePlan } from "@/utils/smartExecutor";
 import { formatMarkdownReply, FormatterResult } from "@/utils/responseFormatter";
 import { generateRentalYieldSummary } from "@/utils/fetchRentalData";
 import { getContext } from '@/utils/contextManager';
@@ -139,9 +139,17 @@ ${summary}
       const userInput = messages[messages.length - 1]?.content || '';
       const analysis = await analyzeUserQuestionSmart(userInput);
       
+const resultData = result as Record<string, unknown>;
+      
+      // Type the fetchedData properly for generateSmartResponse
       const fetchedData = {
-        data: (result as any).fetchedData || {},
-        metadata: (result as any).metadata || { fetchTimeMs: 0, dataSourcesUsed: [], targetAreas: [plan.suburb!], analysisType: 'simple' }
+        data: (resultData.fetchedData as Record<string, unknown>) || {},
+        metadata: {
+          fetchTimeMs: (resultData.metadata as Record<string, unknown>)?.fetchTimeMs as number || 0,
+          dataSourcesUsed: (resultData.metadata as Record<string, unknown>)?.dataSourcesUsed as string[] || [],
+          targetAreas: [plan.suburb!],
+          analysisType: 'simple' as const
+        }
       };
       
       finalReply = await generateSmartResponse(userInput, analysis, fetchedData);

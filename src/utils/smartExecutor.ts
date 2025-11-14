@@ -157,7 +157,7 @@ export async function executeEnhancedPlan(plan: QueryPlan): Promise<Record<strin
   try {
     // Import data orchestrator
     const { fetchSmartRequiredData } = await import('./smartDataOrchestrator');
-    const { analyzeUserQuestionSmart } = await import('./smartQuestionAnalyzer');
+    //const { analyzeUserQuestionSmart } = await import('./smartQuestionAnalyzer');
     
     // Create analysis object for data orchestrator
     const analysis = {
