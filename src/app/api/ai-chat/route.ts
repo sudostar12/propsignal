@@ -12,6 +12,7 @@ import { answerNewProjects } from "@/utils/answers/newProjectsAnswer";
 import { getSuggestionsForTopic } from '@/utils/suggestions';
 import { answerMultiSuburbComparison } from "@/utils/answers/multiSuburbAnswer";
 import { setSuburbContext } from "@/utils/contextManager";
+import { normalizeStateToAbbreviation } from '@/utils/detectSuburb';
 //import { planUserQuery } from "@/utils/smartPlanner";
 //import { executePlan } from "@/utils/queryExecutor";
 //import { toTitle } from "@/utils/formatters";
@@ -114,52 +115,104 @@ if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis
 else {
   const context = getContext();
 
-  // 1️⃣ Check if we are expecting suburb clarification
+// 1️⃣ Check if we are expecting suburb clarification
   if (context.clarificationOptions && context.clarificationOptions.length > 0) {
     console.log('[DEBUG route.ts] User provided clarification input:', userInput);
 
-     // ✅ For multi-suburb flow, use topic from original context instead of re-analyzing 
-  topic = context.pendingTopic || 'general';
-  console.log('[DEBUG route.ts] Using pending topic from context:', topic);
-
-    // Try to match user clarification to stored options
-    const userInputNormalized = userInput.trim().toLowerCase();
-    const clarifiedMatch = context.clarificationOptions.find(opt =>
-      opt.state?.toLowerCase() === userInputNormalized ||
-      opt.lga?.toLowerCase().includes(userInputNormalized) ||
-      opt.suburb.toLowerCase().includes(userInputNormalized)
-    );
-
-    if (clarifiedMatch) {
-      console.log('[DEBUG route.ts] User clarification matched:', clarifiedMatch);
-
-      // Update area, lga, state
-      area = clarifiedMatch.suburb;
-      lga = clarifiedMatch.lga;
-      state = clarifiedMatch.state;
-
-      // Clear clarification options from context
-      updateContext({ suburb: area, lga: lga, state: state, clarificationOptions: [], pendingTopic: undefined });
-    } else {
-      // If no match, ask again
-      console.log('[DEBUG route.ts] User clarification did not match any options');
-
-      const optionsList = context.clarificationOptions
-        .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
-        .join("\n• ");
-
-      const clarificationReply = `I didn't catch which suburb you meant. Could you clarify again?\n\n**Options:**\n• ${optionsList}\n\n**Please reply specifying the state or LGA.**`;
-
-      return NextResponse.json({
-        reply: clarificationReply,
-        clarificationNeeded: true,
-        options: context.clarificationOptions
+    // ✅ NEW: Detect if user is asking a NEW question instead of clarifying
+    // Check for question keywords and topic-related words
+    const questionKeywords = /\b(what|how|tell|show|give|get|find|check|look|search|about)\b/i;
+    const topicKeywords = /\b(crime|price|yield|growth|rental|median|project|stat|rate|suburb|area)\b/i;
+    const hasQuestionWord = questionKeywords.test(userInput);
+    const hasTopicWord = topicKeywords.test(userInput);
+    
+    // Check if user is still talking about the same suburb that needed clarification
+    const previousSuburb = context.clarificationOptions[0]?.suburb?.toLowerCase() || '';
+    const mentionsPreviousSuburb = userInput.toLowerCase().includes(previousSuburb);
+    
+    // If user has question words + topic words BUT doesn't mention the previous suburb = NEW QUESTION
+    const isNewQuestion = (hasQuestionWord || hasTopicWord) && !mentionsPreviousSuburb;
+    
+    console.log('[DEBUG route.ts] New question detection:', {
+      hasQuestionWord,
+      hasTopicWord,
+      mentionsPreviousSuburb,
+      previousSuburb,
+      isNewQuestion
+    });
+    
+    if (isNewQuestion) {
+      console.log('[DEBUG route.ts] User is asking a NEW question - clearing old clarification');
+      
+      // Clear the pending clarification
+      updateContext({ 
+        clarificationOptions: [], 
+        pendingTopic: undefined,
+        suburb: undefined,
+        lga: undefined,
+        state: undefined
       });
-    }
+      
+      // Don't return - let the code continue to process this as a new question
+      // The code will fall through to line 161 where normal suburb detection happens
+    } else {
+      console.log('[DEBUG route.ts] User is providing clarification (not a new question)');
+
+      // ✅ For multi-suburb flow, use topic from original context instead of re-analyzing 
+      topic = context.pendingTopic || 'general';
+      console.log('[DEBUG route.ts] Using pending topic from context:', topic);
+
+// Try to match user clarification to stored options
+    const userInputNormalized = userInput.trim().toLowerCase();
+    
+    // ✅ FIXED: Also check if questionAnalysis detected a state - normalize it for comparison
+    const detectedState = questionAnalysis.state ? normalizeStateToAbbreviation(questionAnalysis.state) : null;
+    console.log('[DEBUG route.ts] Detected state from analysis:', questionAnalysis.state, '-> normalized:', detectedState);
+    
+    const clarifiedMatch = context.clarificationOptions.find(opt => {
+      // Check if user input matches state (either full name or abbreviation)
+      const optStateNormalized = opt.state ? normalizeStateToAbbreviation(opt.state) : '';
+      const userStateMatch = detectedState && optStateNormalized === detectedState;
+      
+      // Original checks
+      const stateMatch = opt.state?.toLowerCase() === userInputNormalized;
+      const lgaMatch = opt.lga?.toLowerCase().includes(userInputNormalized);
+      const suburbMatch = opt.suburb.toLowerCase().includes(userInputNormalized);
+      
+      return userStateMatch || stateMatch || lgaMatch || suburbMatch;
+    });
+
+      if (clarifiedMatch) {
+        console.log('[DEBUG route.ts] User clarification matched:', clarifiedMatch);
+
+        // Update area, lga, state
+        area = clarifiedMatch.suburb;
+        lga = clarifiedMatch.lga;
+        state = clarifiedMatch.state;
+
+        // Clear clarification options from context
+        updateContext({ suburb: area, lga: lga, state: state, clarificationOptions: [], pendingTopic: undefined });
+      } else {
+        // If no match, ask again
+        console.log('[DEBUG route.ts] User clarification did not match any options');
+
+        const optionsList = context.clarificationOptions
+          .map(opt => `${opt.suburb} (${opt.lga}, ${opt.state})`)
+          .join("\n• ");
+
+        const clarificationReply = `I didn't catch which suburb you meant. Could you clarify again?\n\n**Options:**\n• ${optionsList}\n\n**Please reply specifying the state or LGA, or ask a new question to start fresh.**`;
+
+        return NextResponse.json({
+          reply: clarificationReply,
+          clarificationNeeded: true,
+          options: context.clarificationOptions
+        });
+      }
+    } // End of else block for clarification
   }
 
     if (!area) {
-    const suburbDetection = await detectSuburb(userInput);
+    const suburbDetection = await detectSuburb(userInput, questionAnalysis.state || undefined);
 
     if (!suburbDetection.possible_suburb && !suburbDetection.needsClarification) {
   console.log('[DEBUG route.ts] No suburb detected in current message - clearing old suburb context');

@@ -40,7 +40,7 @@ export interface SuburbDetectionResponse {
 }
 
 // Main detection function - now with proper return type
-export async function detectSuburb(input: string): Promise<DetectionResult> {
+export async function detectSuburb(input: string, userProvidedState?: string): Promise<DetectionResult> {
   console.log('[DEBUG detectSuburb] detectSuburb - Starting suburb detection for input:', input);
 
   //const intent = await detectUserIntent(input);
@@ -113,9 +113,21 @@ if (!extractedSuburb || extractedSuburb.length < 2 || extractedSuburb === "NO_SU
   const normalizedExtracted = normalizeSuburbName(extractedSuburb);
   console.log('[DEBUG detectSuburb] - Normalized extracted suburb:', normalizedExtracted);
   
-  const allMatches = allSuburbs.filter(s => {
+const allMatches = allSuburbs.filter(s => {
     const normalizedDb = normalizeSuburbName(s.suburb);
     const isMatch = normalizedDb === normalizedExtracted;
+    
+    // ✅ If user provided a state, only match suburbs in that state
+    if (userProvidedState && isMatch) {
+      // Normalize both states to abbreviations for comparison
+      const normalizedDbState = normalizeStateToAbbreviation(s.state);
+      const normalizedUserState = normalizeStateToAbbreviation(userProvidedState);
+      const stateMatch = normalizedDbState === normalizedUserState;
+      
+      console.log(`[DEBUG detectSuburb] Checking state match: ${s.state}(${normalizedDbState}) vs ${userProvidedState}(${normalizedUserState}) = ${stateMatch}`);
+      return stateMatch;
+    }
+    
     return isMatch;
   });
   
@@ -207,6 +219,33 @@ function normalizeSuburbName(name: string): string {
     .replace(/['']/g, "'")          // Normalize apostrophes
     .replace(/\u00A0/g, ' ')        // Replace non-breaking spaces
     .replace(/[^\w\s'-]/g, '');     // Remove special characters except apostrophes and hyphens
+}
+
+// Helper function to normalize state names to abbreviations
+// Helper function to normalize state names to abbreviations
+export function normalizeStateToAbbreviation(state: string): string {
+  if (!state) return '';
+  
+  const stateUpper = state.trim().toUpperCase();
+  
+  // If already an abbreviation, return it
+  if (['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'].includes(stateUpper)) {
+    return stateUpper;
+  }
+  
+  // Convert full names to abbreviations
+  const stateMap: { [key: string]: string } = {
+    'NEW SOUTH WALES': 'NSW',
+    'VICTORIA': 'VIC',
+    'QUEENSLAND': 'QLD',
+    'SOUTH AUSTRALIA': 'SA',
+    'WESTERN AUSTRALIA': 'WA',
+    'TASMANIA': 'TAS',
+    'NORTHERN TERRITORY': 'NT',
+    'AUSTRALIAN CAPITAL TERRITORY': 'ACT'
+  };
+  
+  return stateMap[stateUpper] || stateUpper;
 }
 
 // AI extraction function using OpenAI
