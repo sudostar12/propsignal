@@ -105,9 +105,10 @@ export type QueryPlan = {
   compare?: { nearby?: boolean; suburbs?: string[] };
   wantMarkdown?: boolean;
   
-  // ✅ NEW: Support for all query types
-  intent?: 'rental_yield' | 'crime_stats' | 'median_price' | 'price_growth' | 'new_projects' | 'suburb_profile' | 'demographics';
-  dataNeeded?: string[]; // e.g., ['crime', 'price', 'yield', 'demographics']
+  // ✅ Support for all query types including search
+  intent?: 'rental_yield' | 'crime_stats' | 'median_price' | 'price_growth' | 'new_projects' | 'suburb_profile' | 'demographics' | 'suburb_search';
+  dataNeeded?: string[];
+  analysisType?: 'single_suburb' | 'comparison' | 'search' | 'market_overview' | 'trend_analysis';
 };
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -161,21 +162,38 @@ export async function planUserQuery(
   },
 ];
 
-  const system = [{
-    role: "system" as const,
-    content:
+const system = [{
+  role: "system" as const,
+  content:
 `You plan data fetches for an Australian property analytics agent.
+
+**CRITICAL RULE: NEVER invent or assume suburb names. Only extract suburbs explicitly mentioned by the user.**
+
+Examples:
+- "What suburbs are best for families?" → suburb: undefined (NO specific suburb mentioned)
+- "Tell me about Doncaster" → suburb: "Doncaster" 
+- "Crime in Box Hill" → suburb: "Box Hill"
+- "What is the basis of your analysis?" → suburb: undefined (meta question, no suburb)
+
+
 - Tables: ${Object.keys(schemaRegistry.tables).join(", ")}.
 - Column rules:
   • median_price: ${schemaRegistry.tables.median_price.columns.join(", ")}
   • median_rentals: ${schemaRegistry.tables.median_rentals.columns.join(", ")}
 - propertyType: ${schemaRegistry.enums.propertyType.join(" | ")}.
+
+**CRITICAL: If the user does NOT mention a specific suburb name, DO NOT invent one. Leave suburb as null or undefined.**
+**Examples:**
+  - "What suburbs are best for families?" → suburb: undefined (no specific suburb mentioned)
+  - "Tell me about Doncaster" → suburb: "Doncaster" (specific suburb mentioned)
+  - "Crime rate in Box Hill" → suburb: "Box Hill" (specific suburb mentioned)
+
 - If user mentions a bedroom (e.g., '4 bedroom house'), set bedroom to that integer.
 - If user asks for yields, include "yield_latest" and default "yield_series" with lastN=3 unless user asks otherwise.
 - If user asks for '3BR price' or 'rent for 2BR unit', include "bedroom_snapshot".
 - If user asks to compare or mentions nearby, include "compare_nearby".
 - Always return a single call to make_query_plan.`,
-  }];
+}];
 
   const resp = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -219,55 +237,37 @@ if (Array.isArray(args.actions) &&
   args.actions.push("price_rent_latest");
 }
 
-if (!args.propertyTypes?.length) args.propertyTypes = ["house", "unit"];
+  if (!args.propertyTypes?.length) args.propertyTypes = ["house", "unit"];
   if (!args.years) args.years = { lastN: 3 };
   
-  // ✅ NEW: If user is asking about non-yield topics, enhance the plan
-  const userInput = messages[messages.length - 1]?.content || '';
-  const lowerInput = userInput.toLowerCase();
+    if (!args.propertyTypes?.length) args.propertyTypes = ["house", "unit"];
+  if (!args.years) args.years = { lastN: 3 };
   
-  // Detect if this is NOT a rental yield question
-  const isNonYieldQuery = 
-    lowerInput.includes('crime') || 
-    lowerInput.includes('safe') ||
-    lowerInput.includes('growth') ||
-    lowerInput.includes('project') ||
-    lowerInput.includes('development') ||
-    lowerInput.includes('demographic') ||
-    lowerInput.includes('population') ||
-    (!lowerInput.includes('yield') && !lowerInput.includes('rent') && lowerInput.includes('price'));
-  
-  if (isNonYieldQuery) {
-    console.log('[planner] Non-yield query detected, using smartQuestionAnalyzer');
-    
-    // Import and use your existing smart analyzer
-    const { analyzeUserQuestionSmart } = await import('./smartQuestionAnalyzer');
-    const smartAnalysis = await analyzeUserQuestionSmart(userInput);
-    
-    // Enrich the plan with smart analysis
-    args.intent = mapTopicToIntent(smartAnalysis.topic);
-    args.dataNeeded = smartAnalysis.dataRequirements;
-    
-    console.log('[planner] Enhanced plan with smart analysis:', { intent: args.intent, dataNeeded: args.dataNeeded });
+  // ✅ Simple suburb check - if no suburb detected, mark as search
+  if (!args.suburb || args.suburb === 'undefined') {
+    args.intent = 'suburb_search';
+    args.analysisType = 'search';
+    console.log('[planner] No suburb detected - marking as search query');
   } else {
-    // Default to rental yield intent
+    // Default to rental yield for specific suburb queries
     args.intent = 'rental_yield';
-    args.dataNeeded = ['rentals', 'prices'];
+    console.log('[planner] Suburb detected - defaulting to rental yield');
   }
   
   return args as QueryPlan;
 }
-
-// ✅ NEW: Helper function to map topic to intent
 function mapTopicToIntent(topic: string): QueryPlan['intent'] {
-  const mapping: Record<string, QueryPlan['intent']> = {
+  const mapping: Record<string, NonNullable<QueryPlan['intent']>> = {
     'crime': 'crime_stats',
     'price': 'median_price',
     'price_growth': 'price_growth',
     'yield': 'rental_yield',
     'projects': 'new_projects',
     'profile': 'suburb_profile',
-    'demographics': 'demographics'
+    'demographics': 'demographics',
+    'lifestyle': 'suburb_profile',
+    'investment': 'suburb_profile',
+    'compare': 'suburb_profile'
   };
   
   return mapping[topic] || 'suburb_profile';

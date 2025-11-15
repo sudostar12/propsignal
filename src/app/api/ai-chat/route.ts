@@ -36,13 +36,77 @@ if (useSmartSystem === true) {
   console.log('[DEBUG route.ts] Using smart system');
   
   try {
-    // Import smart system functions directly (no HTTP fetch needed)
+ // Import smart system functions directly (no HTTP fetch needed)
     const { planUserQuery } = await import('@/utils/smartPlanner');
     const { executeEnhancedPlan } = await import('@/utils/smartExecutor');
     const { generateRentalYieldSummary } = await import('@/utils/fetchRentalData');
     const { formatMarkdownReply } = await import('@/utils/responseFormatter');
+    const { analyzeUserQuestionSmart } = await import('@/utils/smartQuestionAnalyzer');
     
-    // Plan the query
+    // ✅ Analyze user question ONCE and cache it (saves ~2-3 seconds)
+    // For follow-up questions, pass last assistant message as context
+console.log('[DEBUG route.ts] Analyzing user question');
+    const cachedAnalysis = await analyzeUserQuestionSmart(userInput);
+    console.log('[DEBUG route.ts] Cached analysis:', cachedAnalysis);
+    
+    if (cachedAnalysis.topic === 'methodology' || cachedAnalysis.analysisType === 'meta_question') {
+      console.log('[DEBUG route.ts] AI detected meta-question about methodology');
+      
+      const openai = await import('openai').then(m => new m.default({ apiKey: process.env.OPENAI_API_KEY! }));
+
+const methodologyPrompt = `The user asked: "${userInput}"
+
+This is a question about how our property analysis system works.
+
+Provide a natural, confident response that:
+1. Explains we combine official statistics, property market data, and safety records
+2. Mentions we analyze investment metrics, safety, demographics, and market trends
+3. Emphasizes data-driven approach with regular updates
+4. Shows expertise casually, like an expert would naturally explain their work
+5. Ends with "Just ask about any suburb you're interested in"
+
+Tone: Knowledgeable, matter-of-fact, helpful (like a trusted advisor)
+Length: 100-130 words
+AVOID: Defensive phrases, "we encourage", "reach out", "confidentiality", overly formal language
+Keep it conversational and confident.`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: methodologyPrompt }],
+        temperature: 0.7,
+        max_tokens: 300
+      });
+
+      const methodologyResponse = response.choices[0]?.message?.content || 'Our analysis uses data from multiple sources including crime statistics, property prices, and demographics.';
+
+      const { data: logData } = await supabase
+        .from('log_ai_chat')
+        .insert({
+          userInput,
+          AIResponse: methodologyResponse,
+          intent: 'methodology',
+          suburb: null,
+          state: null,
+          isVague: false
+        })
+        .select('uuid');
+
+      return NextResponse.json({
+        reply: methodologyResponse,
+        uuid: logData?.[0]?.uuid || null,
+        suggestions: [
+          'Tell me about Doncaster',
+          'What suburbs are best for families?',
+          'Compare Melton and Werribee'
+        ],
+        showCopy: true,
+        allowFeedback: true,
+        clarificationNeeded: false,
+        fromSmartSystem: true
+      });
+    }
+    
+    // Plan the query (this will also call analyzer internally, but we have cached result for later reuse)
     const plan = await planUserQuery(messages);
     console.log('[DEBUG route.ts] Smart plan:', plan);
     
@@ -105,13 +169,54 @@ ${summary}
 
 💡 Data uses suburb-level rollups (bedroom = null) plus bedroom snapshots when requested.`;
 
+      } else if (plan.intent === 'suburb_search' || !plan.suburb) {
+        // Handle search/recommendation queries
+        console.log('[DEBUG route.ts] Handling suburb search query');
+        
+        const { findTopSuburbsByCriteria } = await import('@/utils/smartDataOrchestrator');
+        const searchResults = await findTopSuburbsByCriteria();
+        
+        console.log('[DEBUG route.ts] Search found suburbs:', searchResults.suburbs);
+        
+        // Generate AI response for search results
+        const { generateSmartResponse } = await import('@/utils/smartDataOrchestrator');
+        const { analyzeUserQuestionSmart } = await import('@/utils/smartQuestionAnalyzer');
+        
+// ✅ Reuse cached analysis instead of calling again
+        const analysis = cachedAnalysis;
+        
+        // Create a response about the recommended suburbs
+        const searchPrompt = `User asked: "${userInput}"
+
+We found these top suburbs based on data analysis:
+${searchResults.suburbs.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+Generate a helpful response that:
+1. Acknowledges their question about community vibe/lifestyle
+2. Lists these suburbs as recommendations
+3. Briefly explains why these suburbs might have strong community (based on demographics, safety, family-friendly factors)
+4. Encourages them to ask about specific suburbs for detailed analysis
+
+Keep it concise and actionable.`;
+
+        const openai = await import('openai').then(m => new m.default({ apiKey: process.env.OPENAI_API_KEY! }));
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [{ role: 'user', content: searchPrompt }],
+          temperature: 0.7,
+          max_tokens: 400
+        });
+
+        smartReply = response.choices[0]?.message?.content || 'Here are some suburbs to consider: ' + searchResults.suburbs.join(', ');
+    
+
         } else {
           // Use AI to generate response for non-yield queries
           const { generateSmartResponse } = await import('@/utils/smartDataOrchestrator');
           const { analyzeUserQuestionSmart } = await import('@/utils/smartQuestionAnalyzer');
           
-          const userInputText = messages[messages.length - 1]?.content || '';
-          const analysis = await analyzeUserQuestionSmart(userInputText);
+         // ✅ Reuse cached analysis instead of calling again
+          const analysis = cachedAnalysis;
           
           const resultData = result as Record<string, unknown>;
           const fetchedData = {
@@ -124,7 +229,7 @@ ${summary}
             }
           };
           
-          smartReply = await generateSmartResponse(userInputText, analysis, fetchedData);
+          smartReply = await generateSmartResponse(userInput, analysis, fetchedData);
         }
         
         // Log to database

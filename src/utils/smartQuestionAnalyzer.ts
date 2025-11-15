@@ -13,11 +13,11 @@ export type SmartAnalyzedQuestion = {
   
   // New smart fields
   dataRequirements: string[]; // What data sources are needed
-  analysisComplexity: 'simple' | 'moderate' | 'complex';
+  analysisComplexity: 'simple' | 'moderate' | 'complex'| 'none';
   responseType: 'factual' | 'analytical' | 'advisory';
   contextualFactors: string[]; // Additional context needed
   confidence: number; // How confident the AI is in this analysis (0-100)
-  analysisType: 'single_suburb' | 'comparison' | 'search' | 'market_overview' | 'trend_analysis';
+  analysisType: 'single_suburb' | 'comparison' | 'search' | 'market_overview' | 'trend_analysis'| 'meta_question';
 };
 
 export async function analyzeUserQuestionSmart(userInput: string): Promise<SmartAnalyzedQuestion> {
@@ -69,11 +69,16 @@ TOPIC CATEGORIES:
 - investment: Investment-focused analysis
 - market_trends: Market dynamics and forecasts
 - planning: Future development and zoning
+- methodology: Questions about how analysis works, data sources, basis of analysis
+- general: Greetings, general chat, unclear questions
 
-ANALYSIS COMPLEXITY:
-- simple: Single data source, straightforward answer
-- moderate: Multiple data sources, some analysis required
-- complex: Comprehensive analysis, multiple factors, advisory output
+ANALYSIS TYPE values:
+- single_suburb: Analysis of one specific suburb
+- comparison: Comparing multiple suburbs
+- search: Finding/recommending suburbs
+- market_overview: Broad market analysis
+- trend_analysis: Historical trend analysis
+- meta_question: Questions about the system itself (methodology, data sources)
 
 RESPONSE TYPE:
 - factual: Just the data/facts

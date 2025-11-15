@@ -18,7 +18,7 @@
 
 import { NextResponse } from "next/server";
 import { planUserQuery } from "@/utils/smartPlanner";
-//import { executePlan } from "@/utils/smartExecutor";
+import { executeEnhancedPlan } from "@/utils/smartExecutor";
 import { formatMarkdownReply, FormatterResult } from "@/utils/responseFormatter";
 import { generateRentalYieldSummary } from "@/utils/fetchRentalData";
 import { getContext } from '@/utils/contextManager';
@@ -45,9 +45,6 @@ export async function POST(req: Request) {
       messagesLen: Array.isArray(messages) ? messages.length : 0,
       useSmartSystem,
     });
-
-    // Import executors
-    const { executeEnhancedPlan } = await import('@/utils/smartExecutor');
 
     // 1) PLAN — build a typed QueryPlan from the conversation
     const plan = await planUserQuery(messages);
