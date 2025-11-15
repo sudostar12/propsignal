@@ -256,19 +256,3 @@ if (Array.isArray(args.actions) &&
   
   return args as QueryPlan;
 }
-function mapTopicToIntent(topic: string): QueryPlan['intent'] {
-  const mapping: Record<string, NonNullable<QueryPlan['intent']>> = {
-    'crime': 'crime_stats',
-    'price': 'median_price',
-    'price_growth': 'price_growth',
-    'yield': 'rental_yield',
-    'projects': 'new_projects',
-    'profile': 'suburb_profile',
-    'demographics': 'demographics',
-    'lifestyle': 'suburb_profile',
-    'investment': 'suburb_profile',
-    'compare': 'suburb_profile'
-  };
-  
-  return mapping[topic] || 'suburb_profile';
-}

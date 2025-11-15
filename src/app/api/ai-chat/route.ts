@@ -169,7 +169,7 @@ ${summary}
 
 💡 Data uses suburb-level rollups (bedroom = null) plus bedroom snapshots when requested.`;
 
-      } else if (plan.intent === 'suburb_search' || !plan.suburb) {
+} else if (plan.intent === 'suburb_search' || !plan.suburb) {
         // Handle search/recommendation queries
         console.log('[DEBUG route.ts] Handling suburb search query');
         
@@ -178,18 +178,10 @@ ${summary}
         
         console.log('[DEBUG route.ts] Search found suburbs:', searchResults.suburbs);
         
-        // Generate AI response for search results
-        const { generateSmartResponse } = await import('@/utils/smartDataOrchestrator');
-        const { analyzeUserQuestionSmart } = await import('@/utils/smartQuestionAnalyzer');
-        
-// ✅ Reuse cached analysis instead of calling again
-        const analysis = cachedAnalysis;
-        
-        // Create a response about the recommended suburbs
         const searchPrompt = `User asked: "${userInput}"
 
 We found these top suburbs based on data analysis:
-${searchResults.suburbs.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+${searchResults.suburbs.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}
 
 Generate a helpful response that:
 1. Acknowledges their question about community vibe/lifestyle
@@ -210,13 +202,9 @@ Keep it concise and actionable.`;
         smartReply = response.choices[0]?.message?.content || 'Here are some suburbs to consider: ' + searchResults.suburbs.join(', ');
     
 
-        } else {
+} else {
           // Use AI to generate response for non-yield queries
           const { generateSmartResponse } = await import('@/utils/smartDataOrchestrator');
-          const { analyzeUserQuestionSmart } = await import('@/utils/smartQuestionAnalyzer');
-          
-         // ✅ Reuse cached analysis instead of calling again
-          const analysis = cachedAnalysis;
           
           const resultData = result as Record<string, unknown>;
           const fetchedData = {
@@ -229,8 +217,8 @@ Keep it concise and actionable.`;
             }
           };
           
-          smartReply = await generateSmartResponse(userInput, analysis, fetchedData);
-        }
+          smartReply = await generateSmartResponse(userInput, cachedAnalysis, fetchedData);
+        } 
         
         // Log to database
         const { data: smartLogData } = await supabase
