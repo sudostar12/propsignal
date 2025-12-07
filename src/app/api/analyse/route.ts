@@ -172,7 +172,7 @@
 
 
       const aiResponse = await openai.chat.completions.create({
-        model: 'gpt-5.1-mini',
+        model: 'gpt-5-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
       });

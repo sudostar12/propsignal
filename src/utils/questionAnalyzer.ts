@@ -109,7 +109,7 @@ Always return valid JSON only.
 
   // Call OpenAI with strict JSON response
   const resp = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL ?? "gpt-5.1-mini",
+    model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
     temperature: 0.1,
     response_format: { type: "json_object" },
     messages: [

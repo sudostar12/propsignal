@@ -388,10 +388,10 @@ ${nearbyInsights.map(n => `- ${n.suburb}: House ${n.houseYield ?? 'N/A'}%, Unit 
     }
   ];
 
-  console.log('[DEBUG-RYS1] Calling OpenAI API with model: gpt-5.1-mini');
+  console.log('[DEBUG-RYS1] Calling OpenAI API with model: gpt-5-mini');
 
   const completion = await openai.chat.completions.create({
-    model: 'gpt-5.1-mini',
+    model: 'gpt-5-mini',
     temperature: 0.5,
     messages: prompt
   });
