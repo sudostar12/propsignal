@@ -85,7 +85,7 @@ RESPOND ONLY WITH JSON.`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5.1-mini',
       messages: [
         { role: 'system', content: 'You are a conversation flow analyzer. Respond only with JSON.' },
         { role: 'user', content: prompt }

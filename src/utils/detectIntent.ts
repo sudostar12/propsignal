@@ -12,7 +12,7 @@ export async function generateGeneralReply(messages: ChatMessage[], topic:string
   try {
     console.log('[DEBUG detectIntent] - AI fallback to general response for topic:', topic);
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-5.1-mini',
       temperature: 0.7,
       messages: [
         {

@@ -83,7 +83,7 @@ AVOID: Defensive phrases, "we encourage", "reach out", "confidentiality", overly
 Keep it conversational and confident.`;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-5.1-mini',
         messages: [{ role: 'user', content: methodologyPrompt }],
         temperature: 0.7,
         max_tokens: 300
@@ -164,7 +164,7 @@ Generate a helpful, data-informed response that:
 Keep it helpful and conversational, 150-200 words.`;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-5.1-mini',
         messages: [{ role: 'user', content: generalPrompt }],
         temperature: 0.7,
         max_tokens: 400
@@ -243,7 +243,7 @@ Provide a direct, insightful answer to their specific question. Be:
 Answer their question directly using the data provided.`;
 
             const response = await openai.chat.completions.create({
-              model: 'gpt-4o',
+              model: 'gpt-5.1-mini',
               messages: [{ role: 'user', content: analyticalPrompt }],
               temperature: 0.7,
               max_tokens: 400
@@ -297,7 +297,7 @@ Keep it concise and actionable.`;
 
         const openai = await import('openai').then(m => new m.default({ apiKey: process.env.OPENAI_API_KEY! }));
         const response = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: 'gpt-5.1-mini',
           messages: [{ role: 'user', content: searchPrompt }],
           temperature: 0.7,
           max_tokens: 400

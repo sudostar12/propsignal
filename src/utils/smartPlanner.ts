@@ -81,7 +81,7 @@ export async function planFiltersOnly(
   };
 
   const resp = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5.1-mini",
     temperature: 0.1,
     messages,
     tools: filterTools,          // ✅ typed as ChatCompletionTool[]
@@ -205,7 +205,7 @@ IMPORTANT: For Victorian suburbs, always set state to "VIC". For NSW suburbs, se
 }];
 
   const resp = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5.1-mini",
     temperature: 0.1,
     messages: [...system, ...messages],
     tools: planTools,

@@ -192,7 +192,7 @@ Structure your response clearly with headings if it's a complex analysis.
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.1-mini",
       messages: [{ role: "user", content: responsePrompt }],
       temperature: 0.3,
     });

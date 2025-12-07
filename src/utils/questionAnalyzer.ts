@@ -109,7 +109,7 @@ Always return valid JSON only.
 
   // Call OpenAI with strict JSON response
   const resp = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+    model: process.env.OPENAI_MODEL ?? "gpt-5.1-mini",
     temperature: 0.1,
     response_format: { type: "json_object" },
     messages: [
@@ -158,7 +158,12 @@ Always return valid JSON only.
   }
 
   // Persist the topic for the next turn
+  if (topicRaw !== "general" && topicRaw !== "profile") {
   setLastTopic(topicRaw);
+} else {
+  console.log("[QA] Skipping setLastTopic for low-signal topic:", topicRaw);
+}
+
 
   // Backward-compat: also set singular targetArea (first item or null)
   const result: AnalyzedQuestion = {
