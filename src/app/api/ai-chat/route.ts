@@ -85,7 +85,7 @@ Keep it conversational and confident.`;
       const response = await openai.chat.completions.create({
         model: 'gpt-5-mini',
         messages: [{ role: 'user', content: methodologyPrompt }],
-        temperature: 0.7,
+        //temperature: 0.7,
         max_tokens: 300
       });
 
@@ -166,7 +166,7 @@ Keep it helpful and conversational, 150-200 words.`;
       const response = await openai.chat.completions.create({
         model: 'gpt-5-mini',
         messages: [{ role: 'user', content: generalPrompt }],
-        temperature: 0.7,
+        //temperature: 0.7,
         max_tokens: 400
       });
 
@@ -245,8 +245,8 @@ Answer their question directly using the data provided.`;
             const response = await openai.chat.completions.create({
               model: 'gpt-5-mini',
               messages: [{ role: 'user', content: analyticalPrompt }],
-              temperature: 0.7,
-              max_tokens: 400
+              //temperature: 0.7,
+              //max_tokens: 400
             });
 
             smartReply = response.choices[0]?.message?.content || yieldData;
@@ -299,7 +299,7 @@ Keep it concise and actionable.`;
         const response = await openai.chat.completions.create({
           model: 'gpt-5-mini',
           messages: [{ role: 'user', content: searchPrompt }],
-          temperature: 0.7,
+          //temperature: 0.7,
           max_tokens: 400
         });
 
@@ -399,6 +399,11 @@ if (topic === 'compare' && targetAreas.length > 1) {
   console.log('[DEBUG route.ts] Multi-suburb comparison requested:', targetAreas);
   // In compare flow, do not set area here
 } else {
+   // ✅ PRIMARY: Use analyzer suburb as the main area if we have one
+  if (!area && suburb1) {
+    area = suburb1;
+    console.log('[DEBUG route.ts] Using analyzer suburb as primary area:', area);
+  }
   
   console.log('[DEBUG route.ts] Single suburb context (AI hint only):', suburb1);
 }

@@ -194,7 +194,7 @@ Structure your response clearly with headings if it's a complex analysis.
     const response = await openai.chat.completions.create({
       model: "gpt-5-mini",
       messages: [{ role: "user", content: responsePrompt }],
-      temperature: 0.3,
+      //temperature: 0.3,
     });
 
     const smartResponse = response.choices[0].message.content || 'Unable to generate response';

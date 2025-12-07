@@ -392,7 +392,7 @@ ${nearbyInsights.map(n => `- ${n.suburb}: House ${n.houseYield ?? 'N/A'}%, Unit 
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-5-mini',
-    temperature: 0.5,
+    //temperature: 0.5,
     messages: prompt
   });
 

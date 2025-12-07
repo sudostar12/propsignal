@@ -110,8 +110,8 @@ Return ONLY valid JSON, no markdown or extra text.
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.1-mini",
-      temperature: 0.1,
+      model: "gpt-5-mini",
+      //temperature: 0.1,
       messages: [
         { role: "system", content: enhancedAnalysisPrompt },
         { role: "user", content: userInput }

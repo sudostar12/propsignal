@@ -273,8 +273,8 @@ async function extractSuburbUsingAI(input: string): Promise<string> {
           content: input
         }
       ],
-      temperature: 0.1, // Low temperature for consistent extraction
-      max_tokens: 50
+      //temperature: 0.1, // Low temperature for consistent extraction
+      max_completion_tokens: 50
     });
     
     const extracted = completion.choices[0]?.message?.content?.trim() || '';

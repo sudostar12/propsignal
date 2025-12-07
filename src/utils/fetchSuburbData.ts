@@ -3,28 +3,76 @@
 import { supabase } from '@/lib/supabaseClient';
 import type { PriceRecord } from "./answers/priceGrowthAnswer";
 
-export async function fetchMedianPrice(suburb: string, minYear?: number, maxYear?: number): Promise<PriceRecord[]> {
- console.log("[DEBUG fetchSuburbData] fetchMedianPrice - Searching for suburb:", suburb);
+export async function fetchMedianPrice(
+  suburb: string,
+  minYear?: number,
+  maxYear?: number
+): Promise<PriceRecord[]> {
+  console.log("[DEBUG fetchSuburbData] fetchMedianPrice - Searching for suburb:", suburb, "minYear:", minYear, "maxYear:", maxYear);
 
   let query = supabase
     .from("median_price")
     .select("*")
     .eq("suburb", suburb);
 
+  // 🟢 If a year range is specified, apply it at the DB level
   if (minYear && maxYear) {
-    console.log("[DEBUG fetchSuburbData] fetchMedianPrice - Applying year range filter directly in query:", minYear, "to", maxYear);
+    console.log(
+      "[DEBUG fetchSuburbData] fetchMedianPrice - Applying year range filter directly in query:",
+      minYear,
+      "to",
+      maxYear
+    );
     query = query.gte("year", minYear).lte("year", maxYear);
   }
-      
-     const { data, error } = await query;
-    
-   if (error || !data) {
-  console.error('[ERROR] fetchMedianPrice - Database error:', error);
-  return []; // Return empty array to match type
-}
 
-console.log('[DEBUG fetchSuburbData] fetchMedianPrice - Final results:', data.length, 'records found');
-return data as PriceRecord[];
+  // Always order by year ascending so we can reliably find the latest year
+  const { data, error } = await query.order("year", { ascending: true });
+
+  if (error || !data) {
+    console.error("[ERROR] fetchMedianPrice - Database error:", error);
+    return []; // Return empty array to match type
+  }
+
+  console.log("[DEBUG fetchSuburbData] fetchMedianPrice - Raw results:", data.length, "records found");
+
+  // ⚠️ If no records at all, just return empty
+  if (data.length === 0) {
+    console.warn("[WARN fetchSuburbData] fetchMedianPrice - No records found for suburb:", suburb);
+    return [];
+  }
+
+  // 🟢 If caller did NOT specify years -> default to latest available year
+  if (!minYear && !maxYear) {
+    // Find the latest year present in the data
+    const latestYear = (data as PriceRecord[]).reduce(
+      (max, row) => (row.year > max ? row.year : max),
+      (data[0] as PriceRecord).year
+    );
+
+    const latestYearData = (data as PriceRecord[]).filter((row) => row.year === latestYear);
+
+    console.log(
+      "[DEBUG fetchSuburbData] fetchMedianPrice - Using latest year only:",
+      latestYear,
+      "records for that year:",
+      latestYearData.length
+    );
+
+    return latestYearData;
+  }
+
+  // 🟢 If a year range was specified, just return all records in that range
+  console.log(
+    "[DEBUG fetchSuburbData] fetchMedianPrice - Returning records for year range:",
+    minYear,
+    "to",
+    maxYear,
+    "count:",
+    data.length
+  );
+
+  return data as PriceRecord[];
 }
 
 export async function fetchDemographics(suburb: string) {

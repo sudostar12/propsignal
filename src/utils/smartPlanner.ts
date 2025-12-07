@@ -82,7 +82,7 @@ export async function planFiltersOnly(
 
   const resp = await openai.chat.completions.create({
     model: "gpt-5-mini",
-    temperature: 0.1,
+    //temperature: 0.1,
     messages,
     tools: filterTools,          // ✅ typed as ChatCompletionTool[]
     tool_choice: toolChoice,     // ✅ typed as ChatCompletionToolChoiceOption
@@ -206,7 +206,7 @@ IMPORTANT: For Victorian suburbs, always set state to "VIC". For NSW suburbs, se
 
   const resp = await openai.chat.completions.create({
     model: "gpt-5-mini",
-    temperature: 0.1,
+    //temperature: 0.1,
     messages: [...system, ...messages],
     tools: planTools,
     tool_choice: { type: "function", function: { name: "make_query_plan" } },

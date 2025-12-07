@@ -90,7 +90,7 @@ RESPOND ONLY WITH JSON.`;
         { role: 'system', content: 'You are a conversation flow analyzer. Respond only with JSON.' },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.1,
+      //temperature: 0.1,
       response_format: { type: 'json_object' }
     });
 

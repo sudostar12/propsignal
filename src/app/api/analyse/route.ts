@@ -174,7 +174,7 @@
       const aiResponse = await openai.chat.completions.create({
         model: 'gpt-5-mini',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
+        //temperature: 0.7,
       });
 
       const aiMessage = aiResponse.choices[0]?.message?.content ?? '';
