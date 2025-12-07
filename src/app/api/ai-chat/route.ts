@@ -49,6 +49,18 @@ console.log('[DEBUG route.ts] Analyzing user question');
     const cachedAnalysis = await analyzeUserQuestionSmart(userInput);
     console.log('[DEBUG route.ts] Cached analysis:', cachedAnalysis);
     
+    // Normalize state name to abbreviation
+    let normalizedState = cachedAnalysis.state;
+    if (normalizedState) {
+      if (normalizedState.toLowerCase().includes('victoria')) normalizedState = 'VIC';
+      else if (normalizedState.toLowerCase().includes('new south wales') || normalizedState === 'NSW') normalizedState = 'NSW';
+      else if (normalizedState.toLowerCase().includes('queensland')) normalizedState = 'QLD';
+      else if (normalizedState.toLowerCase().includes('south australia')) normalizedState = 'SA';
+      else if (normalizedState.toLowerCase().includes('western australia')) normalizedState = 'WA';
+      else if (normalizedState.toLowerCase().includes('tasmania')) normalizedState = 'TAS';
+      console.log('[DEBUG route.ts] Normalized state:', normalizedState);
+    }
+
     if (cachedAnalysis.topic === 'methodology' || cachedAnalysis.analysisType === 'meta_question') {
       console.log('[DEBUG route.ts] AI detected meta-question about methodology');
       
@@ -106,13 +118,85 @@ Keep it conversational and confident.`;
       });
     }
     
-    // Plan the query (this will also call analyzer internally, but we have cached result for later reuse)
+ // Plan the query (AI will detect suburb and state)
     const plan = await planUserQuery(messages);
-    console.log('[DEBUG route.ts] Smart plan:', plan);
     
-    if (!plan.suburb) {
-      // Fall back to original system if no suburb detected
-      console.log('[DEBUG route.ts] No suburb in plan, falling back to original system');
+ // No AI topic mapping - let planner handle it or use analysis type
+    console.log('[DEBUG route.ts] AI analysis type:', cachedAnalysis.analysisType);
+    
+    // Override state with AI's detection if available
+    if (normalizedState && !plan.state) {
+      plan.state = normalizedState;
+      console.log('[DEBUG route.ts] Applied AI-detected state to plan:', normalizedState);
+    }
+    
+    console.log('[DEBUG route.ts] Smart plan:', plan);
+        // If we have a suburb but no state, look it up in database
+    if (plan.suburb && plan.suburb !== 'undefined' && !plan.state) {
+      console.log('[DEBUG route.ts] Suburb detected but no state - looking up in database');
+      
+      const { detectSuburb } = await import('@/utils/detectSuburb');
+      const suburbLookup = await detectSuburb(plan.suburb);
+      
+      if (suburbLookup && !suburbLookup.needsClarification) {
+        plan.state = suburbLookup.state;
+        console.log('[DEBUG route.ts] Found state from database lookup:', plan.state);
+      } else {
+        console.log('[DEBUG route.ts] Could not determine state - will proceed without state filter');
+      }
+    }
+    
+if (!plan.suburb && plan.intent !== 'suburb_search') {
+      console.log('[DEBUG route.ts] No suburb and not a search query - generating AI response for general question');
+      
+      const openai = await import('openai').then(m => new m.default({ apiKey: process.env.OPENAI_API_KEY! }));
+      
+      const generalPrompt = `The user asked: "${userInput}"
+
+This is a general property market question without a specific suburb.
+
+Generate a helpful, data-informed response that:
+1. Acknowledges it's a broad question
+2. Provides general insights based on Victoria property market trends
+3. Mentions that specific suburb analysis would give more precise answers
+4. Encourages them to ask about specific suburbs
+
+Keep it helpful and conversational, 150-200 words.`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: generalPrompt }],
+        temperature: 0.7,
+        max_tokens: 400
+      });
+
+      const generalReply = response.choices[0]?.message?.content || "I can help with property insights. Please specify a suburb for detailed analysis.";
+      
+      const { data: logData } = await supabase
+        .from('log_ai_chat')
+        .insert({
+          userInput,
+          AIResponse: generalReply,
+          intent: cachedAnalysis.topic,
+          suburb: null,
+          state: plan.state,
+          isVague: true
+        })
+        .select('uuid');
+
+      return NextResponse.json({
+        reply: generalReply,
+        uuid: logData?.[0]?.uuid || null,
+        suggestions: [
+          'Tell me about Doncaster',
+          'Compare Melton and Werribee',
+          'What suburbs are best for families?'
+        ],
+        showCopy: true,
+        allowFeedback: true,
+        clarificationNeeded: false,
+        fromSmartSystem: true
+      });
     } else {
       // Execute the plan
       const result = await executeEnhancedPlan(plan);
@@ -124,50 +208,70 @@ Keep it conversational and confident.`;
         // Generate response based on intent
         let smartReply: string;
         
-        if (plan.intent === 'rental_yield' || !plan.intent) {
-          // Use rental yield response generation
-          const successResult = result as Record<string, unknown>;
+if (plan.intent === 'rental_yield' || !plan.intent) {
+          // Check if this is an analytical/comparative question about yields
+          const lowerInput = userInput.toLowerCase();
+          const isAnalytical = 
+            lowerInput.includes('changed') || lowerInput.includes('trend') || 
+            lowerInput.includes('which') || lowerInput.includes('what type') || 
+            lowerInput.includes('compare') || lowerInput.includes('highest') ||
+            lowerInput.includes('best') || lowerInput.includes('achieve') ||
+            cachedAnalysis.analysisType === 'trend_analysis' ||
+            cachedAnalysis.analysisType === 'market_overview';
           
-          const yearForSummary =
-            (successResult.latestYieldYear as number | null) ??
-            ((successResult.latestPR as { year?: number })?.year) ??
-            new Date().getFullYear();
+          if (isAnalytical) {
+            console.log('[DEBUG route.ts] Generating AI-powered analytical yield response');
+            
+            const { answerRentalYield } = await import('@/utils/answers/rentalYieldAnswer');
+            const yieldData = await answerRentalYield(plan.suburb!, plan.state || 'VIC');
+            
+            const openai = await import('openai').then(m => new m.default({ apiKey: process.env.OPENAI_API_KEY! }));
+            
+            const analyticalPrompt = `User asked: "${userInput}"
 
-          const nearbyInsights = ((successResult.nearbyCompare as { rows?: unknown[] })?.rows || []).map((r: unknown) => {
-            const row = r as { suburb: string; house?: number; unit?: number };
-            return {
-              suburb: row.suburb,
-              houseYield: typeof row.house === "number" ? row.house : undefined,
-              unitYield: typeof row.unit === "number" ? row.unit : undefined,
-            };
-          });
+Here's the rental yield data for ${plan.suburb}:
 
-          const latestYield = successResult.latestYield as { house?: number; unit?: number } | undefined;
-          const capitalAvg = successResult.capitalAvg as { house?: number; unit?: number } | undefined;
-          const houseYield = typeof latestYield?.house === "number" ? latestYield.house : undefined;
+${yieldData}
 
-          let summary: string;
-          if (houseYield !== undefined) {
-            summary = await generateRentalYieldSummary({
-              suburb: plan.suburb,
-              year: yearForSummary,
-              userHouseYield: houseYield,
-              userUnitYield: typeof latestYield?.unit === "number" ? latestYield.unit : undefined,
-              nearbyInsights,
-              state: plan.state || "VIC",
-              stateAvgHouseYield: typeof capitalAvg?.house === "number" ? capitalAvg.house : undefined,
-              stateAvgUnitYield: typeof capitalAvg?.unit === "number" ? capitalAvg.unit : undefined,
+Provide a direct, insightful answer to their specific question. Be:
+- Specific and data-driven (reference the actual numbers)
+- Analytical (explain WHY, not just WHAT - what causes the patterns?)
+- Actionable (what does this mean for investment decisions?)
+- Conversational and engaging
+- 150-200 words
+
+Answer their question directly using the data provided.`;
+
+            const response = await openai.chat.completions.create({
+              model: 'gpt-4o',
+              messages: [{ role: 'user', content: analyticalPrompt }],
+              temperature: 0.7,
+              max_tokens: 400
             });
+
+            smartReply = response.choices[0]?.message?.content || yieldData;
           } else {
-            summary = "Unable to generate yield analysis - insufficient house yield data available.";
+            console.log('[DEBUG route.ts] Generating standard rental yield response');
+            const { answerRentalYield } = await import('@/utils/answers/rentalYieldAnswer');
+            smartReply = await answerRentalYield(plan.suburb!, plan.state || 'VIC');
           }
-
-          smartReply = `${formatMarkdownReply(plan.suburb, successResult as never)}
- 
-🧭 **Summary**
-${summary}
-
-💡 Data uses suburb-level rollups (bedroom = null) plus bedroom snapshots when requested.`;
+          
+ } else if (plan.intent === 'crime_stats') {
+          console.log('[DEBUG route.ts] Generating crime stats response');
+          smartReply = await answerCrimeStats(plan.suburb!);
+          
+        } else if (plan.intent === 'price_growth') {
+          console.log('[DEBUG route.ts] Generating price growth response');
+          smartReply = await answerPriceGrowth(plan.suburb!);
+          
+        } else if (plan.intent === 'new_projects') {
+          console.log('[DEBUG route.ts] Generating new projects response');
+          const context = getContext();
+          smartReply = await answerNewProjects(plan.suburb!, context.lga || plan.state || 'VIC');
+             
+        } else if (plan.intent === 'suburb_profile' || plan.intent === 'median_price') {
+          console.log('[DEBUG route.ts] Generating suburb profile response');
+          smartReply = await answerMedianPrice(plan.suburb!);
 
 } else if (plan.intent === 'suburb_search' || !plan.suburb) {
         // Handle search/recommendation queries
@@ -203,22 +307,33 @@ Keep it concise and actionable.`;
     
 
 } else {
-          // Use AI to generate response for non-yield queries
+          console.log('[DEBUG route.ts] Generating AI response with fetched data');
+          
           const { generateSmartResponse } = await import('@/utils/smartDataOrchestrator');
           
           const resultData = result as Record<string, unknown>;
+          
+          console.log('[DEBUG route.ts] Available data:', Object.keys(resultData.fetchedData || {}));
+          
+          const metadata = resultData.metadata as {
+            fetchTimeMs?: number;
+            dataSourcesUsed?: string[];
+            targetAreas?: string[];
+            analysisType?: string;
+          } | undefined;
+          
           const fetchedData = {
-            data: (resultData.fetchedData || {}) as Record<string, unknown>,
+            data: (resultData.fetchedData as Record<string, unknown>) || {},
             metadata: {
-              fetchTimeMs: 0,
-              dataSourcesUsed: [] as string[],
-              targetAreas: [plan.suburb] as string[],
-              analysisType: 'simple' as 'simple' | 'moderate' | 'complex'
+              fetchTimeMs: metadata?.fetchTimeMs || 0,
+              dataSourcesUsed: metadata?.dataSourcesUsed || [],
+              targetAreas: metadata?.targetAreas || [plan.suburb!],
+              analysisType: metadata?.analysisType || 'simple'
             }
           };
           
           smartReply = await generateSmartResponse(userInput, cachedAnalysis, fetchedData);
-        } 
+        }
         
         // Log to database
         const { data: smartLogData } = await supabase

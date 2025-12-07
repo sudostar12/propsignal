@@ -175,6 +175,8 @@ Examples:
 - "Crime in Box Hill" → suburb: "Box Hill"
 - "What is the basis of your analysis?" → suburb: undefined (meta question, no suburb)
 
+IMPORTANT: For Victorian suburbs, always set state to "VIC". For NSW suburbs, set state to "NSW". For QLD suburbs, set state to "QLD".
+
 
 - Tables: ${Object.keys(schemaRegistry.tables).join(", ")}.
 - Column rules:
@@ -237,22 +239,39 @@ if (Array.isArray(args.actions) &&
   args.actions.push("price_rent_latest");
 }
 
-  if (!args.propertyTypes?.length) args.propertyTypes = ["house", "unit"];
+  
+if (!args.propertyTypes?.length) args.propertyTypes = ["house", "unit"];
   if (!args.years) args.years = { lastN: 3 };
   
-    if (!args.propertyTypes?.length) args.propertyTypes = ["house", "unit"];
-  if (!args.years) args.years = { lastN: 3 };
+  const userInput = messages[messages.length - 1]?.content || '';
+  const stateMatch = userInput.match(/\b(VIC|NSW|QLD|SA|WA|TAS|ACT|NT|Victoria|New South Wales|Queensland|South Australia|Western Australia|Tasmania|Australian Capital Territory|Northern Territory)\b/i);
   
-  // ✅ Simple suburb check - if no suburb detected, mark as search
+  if (stateMatch) {
+    const detectedState = stateMatch[0].toUpperCase();
+    const stateMap: Record<string, string> = {
+      'VICTORIA': 'VIC',
+      'NEW SOUTH WALES': 'NSW', 
+      'QUEENSLAND': 'QLD',
+      'SOUTH AUSTRALIA': 'SA',
+      'WESTERN AUSTRALIA': 'WA',
+      'TASMANIA': 'TAS',
+      'AUSTRALIAN CAPITAL TERRITORY': 'ACT',
+      'NORTHERN TERRITORY': 'NT'
+    };
+    args.state = stateMap[detectedState] || detectedState;
+    console.log('[planner] Detected state from input:', args.state);
+  }
+  
+  if (!args.state) {
+    args.state = 'VIC';
+    console.log('[planner] No state detected, defaulting to VIC');
+  }
+  
   if (!args.suburb || args.suburb === 'undefined') {
     args.intent = 'suburb_search';
     args.analysisType = 'search';
     console.log('[planner] No suburb detected - marking as search query');
-  } else {
-    // Default to rental yield for specific suburb queries
-    args.intent = 'rental_yield';
-    console.log('[planner] Suburb detected - defaulting to rental yield');
-  }
+  } 
   
   return args as QueryPlan;
 }

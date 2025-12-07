@@ -42,6 +42,14 @@ AVAILABLE DATA SOURCES:
 
 USER QUESTION: "${userInput}"
 
+IMPORTANT: If a suburb is mentioned, you MUST determine its state:
+- Use your knowledge of Australian geography to identify which state the suburb is in
+- Common Victorian suburbs: Doncaster, Box Hill, Frankston, Melton, Werribee, Dandenong, Hawthorn, Richmond, etc.
+- Common NSW suburbs: Parramatta, Bondi, Penrith, Liverpool, Campbelltown, etc.
+- Common QLD suburbs: Surfers Paradise, Broadbeach, Southport, etc.
+- If you know the suburb, set state to "Victoria", "New South Wales", or "Queensland"
+- If uncertain, set state to null
+
 Return JSON with this exact structure:
 {
   "topic": "price_growth", 
