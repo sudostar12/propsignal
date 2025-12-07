@@ -88,10 +88,17 @@ export async function planFiltersOnly(
     tool_choice: toolChoice,     // ✅ typed as ChatCompletionToolChoiceOption
   });
 
-  const call = resp.choices[0]?.message?.tool_calls?.[0];
-  if (!call) return null;
-  const args = JSON.parse(call.function.arguments || "{}");
-  return args as FilterPlan;
+const call = resp.choices[0]?.message?.tool_calls?.[0];
+
+// ✅ Bail out if no call or not a function tool call
+if (!call || !("function" in call)) {
+  return null;
+}
+
+// ✅ Now TypeScript knows `call` has a `.function` property
+const args = JSON.parse(call.function?.arguments ?? "{}");
+return args as FilterPlan;
+
 }
 
 export type QueryPlan = {
@@ -211,7 +218,11 @@ IMPORTANT: For Victorian suburbs, always set state to "VIC". For NSW suburbs, se
     return { actions: ["yield_latest", "yield_series", "price_rent_latest"], wantMarkdown: true };
   }
 
-  const args = JSON.parse(tool.function.arguments || "{}");
+  // 👇 Same TS workaround as above
+const toolArgsJson = (tool as any).function?.arguments ?? "{}";
+
+const args = JSON.parse(toolArgsJson);
+
 
 // Normalize defaults
 if (!args.propertyTypes?.length) args.propertyTypes = ["house","unit"];
