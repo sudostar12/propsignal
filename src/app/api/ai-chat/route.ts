@@ -428,6 +428,20 @@ if (questionAnalysis.compare && questionAnalysis.targetAreas && questionAnalysis
 else {
   const context = getContext();
 
+    // ✅ NEW: Use previous context suburb for follow-up questions if no new suburb is given
+  if (!area && context.suburb && topic !== 'compare') {
+    area = context.suburb;
+    lga = context.lga ?? lga;
+    state = context.state ?? state;
+
+    console.log('[DEBUG route.ts] Using previous context suburb for follow-up question:', {
+      area,
+      lga,
+      state
+    });
+  }
+
+
 // 1️⃣ Check if we are expecting suburb clarification
   if (context.clarificationOptions && context.clarificationOptions.length > 0) {
     console.log('[DEBUG route.ts] User provided clarification input:', userInput);
@@ -523,21 +537,16 @@ else {
       }
     } // End of else block for clarification
   }
+  
 
     if (!area) {
     const suburbDetection = await detectSuburb(userInput, questionAnalysis.state || undefined);
 
-    if (!suburbDetection.possible_suburb && !suburbDetection.needsClarification) {
-  console.log('[DEBUG route.ts] No suburb detected in current message - clearing old suburb context');
-  updateContext({ 
-    suburb: undefined, 
-    lga: undefined, 
-    state: undefined, 
-    nearbySuburbs: [],
-    clarificationOptions: [],
-    pendingTopic: undefined
-  });
-}
+        if (!suburbDetection.possible_suburb && !suburbDetection.needsClarification) {
+      console.log('[DEBUG route.ts] No suburb detected in current message - keeping existing suburb context (may be follow-up)');
+      // ❌ Do NOT clear context here – follow-up questions often omit the suburb.
+    }
+
 
     if (suburbDetection.needsClarification && suburbDetection.multipleMatches) {
       console.log('[DEBUG route.ts] Multiple matches found, storing clarification options in context');
