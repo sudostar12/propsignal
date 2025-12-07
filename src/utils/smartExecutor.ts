@@ -139,6 +139,20 @@ export async function executeEnhancedPlan(plan: QueryPlan): Promise<Record<strin
   const suburb = plan.suburb;
   const state = plan.state || 'VIC';
   
+  // ✅ Handle search/recommendation queries (no specific suburb)
+  if (!suburb && plan.intent === 'suburb_search') {
+    console.log('[enhanced-executor] Handling suburb search query');
+    
+    const { findTopSuburbsByCriteria } = await import('./smartDataOrchestrator');
+    const searchResults = await findTopSuburbsByCriteria();
+    
+    return {
+      plan,
+      searchResults,
+      intent: 'suburb_search'
+    };
+  }
+  
   if (!suburb) {
     return { error: "No suburb detected. Please specify a suburb." };
   }
