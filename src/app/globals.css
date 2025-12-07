@@ -1,8 +1,9 @@
 /* postcss-ignore */
+@import "@fontsource/dm-sans/index.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "@fontsource/dm-sans/index.css";
+
 
 
 :root {
